@@ -106,11 +106,6 @@
   (with-current-buffer (shime-buffer)
     (setq buffer-read-only t)))
 
-;; Make the buffer immutable.
-(defun shime-mutable-p () 
-  (with-current-buffer (shime-buffer)
-    buffer-read-only t))
-
 ;; Make the buffer mutable.
 (defun shime-mutable ()
   (with-current-buffer (shime-buffer)
