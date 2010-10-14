@@ -2,6 +2,7 @@
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
 (defvar shime-welcome-message "\"Hello, Haskell!\"")
+(defvar shime-prompt-regex "^[^>]+> \\(.+\\)")
 
 ;; English language strings.
 (defvar shime-strings-en
@@ -16,7 +17,10 @@
   (setq shime-mode t))
 
 ;; Define the keymap
-(defvar shime-mode-map (make-sparse-keymap))
+(setq shime-mode-map 
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'shime-key-ret)
+    map))
 
 ;; Start SHIME.
 (defun shime ()
@@ -29,12 +33,13 @@
 ;; Start the mode
 (defun shime-mode ()
   (interactive)
-  (kill-all-local-variables)
-  (shime-immutable)
-  (use-local-map shime-mode-map)
-  (setq major-mode 'shime-mode)
-  (setq mode-name "SHIME")
-  (run-mode-hooks 'shime-mode-hook))
+  (with-current-buffer (shime-buffer)
+    (kill-all-local-variables)
+    (shime-immutable)
+    (use-local-map shime-mode-map)
+    (setq major-mode 'shime-mode)
+    (setq mode-name "SHIME")
+    (run-mode-hooks 'shime-mode-hook)))
 
 ;; Get the shime buffer.
 (defun shime-buffer ()
@@ -43,7 +48,6 @@
 ;; Start the inferior Haskell process.
 (defun shime-start-process ()
   (let ((process-connection-type nil)) ;; Use a pipe.
-    (shime-buffer)
     (start-process shime-process-name nil shime-program)
     (set-process-filter (get-process shime-process-name)
                         #'shime-process-filter)
@@ -53,7 +57,14 @@
 
 ;; Process anything recieved from the inferior Haskell process.
 (defun shime-process-filter (process incoming)
-  (message incoming))
+  (if (shime-mutable-p)
+      (shime-echo incoming)))
+
+;; Echo a new entry in the SHIME buffer.
+(defun shime-echo (str)
+  (with-current-buffer (shime-buffer)
+    (goto-char (point-max))
+    (insert str)))
 
 ;; Process any status change events (e.g. the process has quit).
 (defun shime-process-sentinel (process event)
@@ -67,7 +78,12 @@
 ;; Make the buffer immutable.
 (defun shime-immutable () 
   (with-current-buffer (shime-buffer)
-   (setq buffer-read-only t)))
+    (setq buffer-read-only t)))
+
+;; Make the buffer immutable.
+(defun shime-mutable-p () 
+  (with-current-buffer (shime-buffer)
+    buffer-read-only t))
 
 ;; Make the buffer mutable.
 (defun shime-mutable ()
@@ -91,3 +107,14 @@
               "Unable to retrieve language entry for "
               (symbol-name n)
               " from language set.")))))
+
+;; Handle return event.
+(defun shime-key-ret ()
+  (interactive)
+  (with-current-buffer (shime-buffer)
+    (let ((line (buffer-substring-no-properties
+                 (line-beginning-position)
+                 (line-end-position))))
+    (when (string-match shime-prompt-regex line)
+      (shime-echo "\n")
+      (shime-send-expression (match-string 1 line))))))
