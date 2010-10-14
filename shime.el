@@ -29,7 +29,6 @@
 (defvar shime-program "/home/chris/Programs/bin/ghci")
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
-(defvar shime-welcome-message "\"Hello, Haskell!\"")
 (defvar shime-prompt-regex "^[^>]+> \\(.+\\)")
 
 ;; English language strings.
@@ -80,8 +79,7 @@
     (set-process-filter (get-process shime-process-name)
                         #'shime-process-filter)
     (set-process-sentinel (get-process shime-process-name)
-                          #'shime-process-sentinel)
-    (shime-send-expression shime-welcome-message)))
+                          #'shime-process-sentinel)))
 
 ;; Process anything recieved from the inferior Haskell process.
 (defun shime-process-filter (process incoming)
