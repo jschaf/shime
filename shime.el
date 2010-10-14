@@ -26,7 +26,7 @@
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
 
-(defvar shime-program "/home/chris/Programs/bin/ghci")
+(defvar shime-program "ghci")
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
 (defvar shime-prompt-regex "^[^>]+> \\(.+\\)")
@@ -75,7 +75,7 @@
 ;; Start the inferior Haskell process.
 (defun shime-start-process ()
   (let ((process-connection-type nil)) ;; Use a pipe.
-    (start-process shime-process-name nil shime-program)
+    (start-process shime-process-name nil (executable-find shime-program))
     (set-process-filter (get-process shime-process-name)
                         #'shime-process-filter)
     (set-process-sentinel (get-process shime-process-name)
