@@ -33,13 +33,13 @@
 
 ;; English language strings.
 (defvar shime-strings-en
-  '((shime-process-died . "The SHIME process died. Restart it? ")))
+  '((shime-process-died . "The Shime process died. Restart it? ")))
 
 ;; Default language set.
 (defvar shime-lang-set shime-strings-en)
 
 ;; Define the mode
-(define-derived-mode shime-mode nil "SHIME"
+(define-derived-mode shime-mode nil "Shime"
   (make-local-variable 'shime-mode)
   (setq shime-mode t))
 
@@ -49,7 +49,7 @@
     (define-key map (kbd "RET") 'shime-key-ret)
     map))
 
-;; Start SHIME.
+;; Start Shime.
 (defun shime ()
   (interactive)
   (with-current-buffer (shime-buffer)
@@ -65,7 +65,7 @@
     (shime-immutable)
     (use-local-map shime-mode-map)
     (setq major-mode 'shime-mode)
-    (setq mode-name "SHIME")
+    (setq mode-name "Shime")
     (run-mode-hooks 'shime-mode-hook)))
 
 ;; Get the shime buffer.
@@ -86,7 +86,7 @@
   (if (shime-mutable-p)
       (shime-echo incoming)))
 
-;; Echo a new entry in the SHIME buffer.
+;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
   (with-current-buffer (shime-buffer)
     (goto-char (point-max))
