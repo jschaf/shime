@@ -49,7 +49,7 @@
   (setq shime-mode t))
 
 ;; Define the keymap
-(setq shime-mode-map 
+(defvar shime-mode-map 
       (let ((map (make-sparse-keymap)))
         (define-key map (kbd "RET") 'shime-key-ret)
         map))
