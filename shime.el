@@ -33,12 +33,12 @@
 
 ;; English language strings.
 (defvar shime-strings-en
-      '((shime-process-died . "The Shime process died. Restart it? ")
-        (shime-program-not-found 
-         . (lambda (name) (concat "Unable to find Shime program \"" name
-                                  "\" in PATH, would you like to enter a new path? ")))
-        (shime-program-new-path . "New Shime program path: ")
-        (shime-could-not-start . "Shime could not start.")))
+  '((shime-process-died . "The Shime process died. Restart it? ")
+    (shime-program-not-found 
+     . (lambda (name) (concat "Unable to find Shime program \"" name
+                              "\" in PATH, would you like to enter a new path? ")))
+    (shime-program-new-path . "New Shime program path: ")
+    (shime-could-not-start . "Shime could not start.")))
 
 ;; Default language set.
 (defvar shime-lang-set shime-strings-en)
