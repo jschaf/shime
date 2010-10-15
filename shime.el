@@ -26,6 +26,8 @@
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
 
+(require 'etags)
+
 (defvar shime-program "ghci")
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
@@ -33,6 +35,7 @@
 (defvar shime-lock nil) ;; Use a queue later.
 (defvar shime-captured-data "")
 (defvar shime-capture-callback nil)
+(defvar shime-symbols '())
 
 ;; English language strings.
 (defvar shime-strings-en
@@ -51,6 +54,7 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
     (define-key map (kbd "C-j") 'shime-key-ret)
+    (define-key map (kbd "TAB") 'shime-key-tab)
     map))
 
 ;; Define the mode
@@ -175,6 +179,25 @@
       (when (string-match shime-prompt-regex line)
         (shime-send-expression (match-string 1 line))))))
 
+;; Handle tab key press event.
+(defun shime-key-tab ()
+  (interactive)
+  (with-current-buffer (shime-buffer)
+    (let* ((sym (find-tag-default))
+           (completion (try-completion sym shime-symbols)))
+      (when completion
+        (cond ((eq completion t) 
+               (unless (string= (buffer-substring-no-properties (- (point) 1) (point))
+                                " ")
+                 (insert " ")))
+              ((string= completion sym)
+               (let ((completion
+                      (ido-completing-read "Completions: "
+                                           (all-completions sym shime-symbols))))
+                 (when completion
+                   (insert (substring completion (length sym))))))
+              (t (insert (substring completion (length sym)))))))))
+
 (defun shime-query (query f)
   (setq shime-capture-callback f)
   (shime-send-expression query))
@@ -182,5 +205,22 @@
 ;; Acquire exports from a given (loaded) module.
 (defun shime-get-exports (module-name f)
   (shime-query (concat ":browse " module-name) f))
+
+;;Get all exports into a list.
+(defun shime-get-all-exports ()
+  (setq shime-symbols '())
+  (mapc
+   (lambda (module)
+     (shime-get-exports
+      module
+      (lambda (exports)
+        (setq shime-symbols
+              (append shime-symbols
+                      (mapcar (lambda (export)
+                             (when (string-match "\\(.+\\) :: " export)
+                               (match-string 1 export)))
+                           (split-string exports "\n")))))))
+   ;; TODO: Detect the real module list from GHCi
+   '("Prelude")))
 
 (provide 'shime)
