@@ -174,3 +174,7 @@
                  (line-end-position))))
       (when (string-match shime-prompt-regex line)
         (shime-send-expression (match-string 1 line))))))
+
+(defun shime-query (query f)
+  (setq shime-capture-callback f)
+  (shime-send-expression query))
