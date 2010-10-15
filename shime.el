@@ -45,9 +45,9 @@
 
 ;; Define the keymap
 (setq shime-mode-map 
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") 'shime-key-ret)
-    map))
+      (let ((map (make-sparse-keymap)))
+        (define-key map (kbd "RET") 'shime-key-ret)
+        map))
 
 ;; Start Shime.
 (defun shime ()
@@ -137,6 +137,6 @@
     (let ((line (buffer-substring-no-properties
                  (line-beginning-position)
                  (line-end-position))))
-    (when (string-match shime-prompt-regex line)
-      (shime-echo "\n")
-      (shime-send-expression (match-string 1 line))))))
+      (when (string-match shime-prompt-regex line)
+        (shime-echo "\n")
+        (shime-send-expression (match-string 1 line))))))
