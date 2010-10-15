@@ -208,6 +208,7 @@
 
 ;;Get all exports into a list.
 (defun shime-get-all-exports ()
+  (interactive)
   (setq shime-symbols '())
   (mapc
    (lambda (module)
