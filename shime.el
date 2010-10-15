@@ -29,7 +29,10 @@
 (defvar shime-program "ghci")
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
-(defvar shime-prompt-regex "^[^>]+> \\(.+\\)")
+(defvar shime-prompt-regex "^λ> \\(.*\\)")
+(defvar shime-lock nil) ;; Use a queue later.
+(defvar shime-captured-data "")
+(defvar shime-capture-callback nil)
 
 ;; English language strings.
 (defvar shime-strings-en
@@ -89,18 +92,35 @@
 
 ;; Start the inferior Haskell process.
 (defun shime-start-process ()
+  (interactive)
   (let ((process-connection-type nil)) ;; Use a pipe.
     (start-process shime-process-name nil (executable-find shime-program))
-    (set-process-filter (get-process shime-process-name)
-                        #'shime-process-filter)
-    (set-process-sentinel (get-process shime-process-name)
-                          #'shime-process-sentinel)))
+    (let ((process (get-process shime-process-name)))
+      (set-process-filter process #'shime-process-filter)
+      (set-process-sentinel process #'shime-process-sentinel)
+      (setq shime-response-data nil)
+      (setq shime-capture-callback nil))))
 
 ;; Process anything recieved from the inferior Haskell process.
+;; TODO: Make this line buffered.
+;; TODO: Support windows \r\n?
 (defun shime-process-filter (process incoming)
   (with-current-buffer (shime-buffer)
-    (when (not buffer-read-only)
-      (shime-echo incoming))))
+    (mapc (lambda (line)
+            (when (not (string= line ""))
+              (if shime-capture-callback
+                  (if (string-match shime-prompt-regex line)
+                      (let ((data shime-captured-data) (f shime-capture-callback))
+                        (setq shime-captured-data "")
+                        (setq shime-capture-callback nil)
+                        (funcall f data))
+                    (setq shime-captured-data 
+                          (if (string= shime-captured-data "")
+                              line
+                            (concat shime-captured-data "\n" line))))
+                (when (not buffer-read-only)
+                  (shime-echo (concat "\n" line))))))
+          (split-string incoming "\n"))))
 
 ;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
@@ -153,5 +173,4 @@
                  (line-beginning-position)
                  (line-end-position))))
       (when (string-match shime-prompt-regex line)
-        (shime-echo "\n")
         (shime-send-expression (match-string 1 line))))))
