@@ -43,16 +43,16 @@
 ;; Default language set.
 (defvar shime-lang-set shime-strings-en)
 
+(defvar shime-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") 'shime-key-ret)
+    (define-key map (kbd "C-j") 'shime-key-ret)
+    map))
+
 ;; Define the mode
 (define-derived-mode shime-mode nil "Shime"
   (make-local-variable 'shime-mode)
   (setq shime-mode t))
-
-;; Define the keymap
-(defvar shime-mode-map 
-      (let ((map (make-sparse-keymap)))
-        (define-key map (kbd "RET") 'shime-key-ret)
-        map))
 
 ;; Start Shime.
 (defun shime ()
