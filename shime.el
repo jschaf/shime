@@ -33,7 +33,12 @@
 
 ;; English language strings.
 (defvar shime-strings-en
-  '((shime-process-died . "The Shime process died. Restart it? ")))
+      '((shime-process-died . "The Shime process died. Restart it? ")
+        (shime-program-not-found 
+         . (lambda (name) (concat "Unable to find Shime program \"" name
+                                  "\" in PATH, would you like to enter a new path? ")))
+        (shime-program-new-path . "New Shime program path: ")
+        (shime-could-not-start . "Shime could not start.")))
 
 ;; Default language set.
 (defvar shime-lang-set shime-strings-en)
@@ -52,10 +57,16 @@
 ;; Start Shime.
 (defun shime ()
   (interactive)
-  (with-current-buffer (shime-buffer)
-    (shime-mode)
-    (shime-start-process)
-    (shime-mutable)))
+  (if (executable-find shime-program)
+      (with-current-buffer (shime-buffer)
+        (shime-mode)
+        (shime-start-process)
+        (shime-mutable))
+    (if (y-or-n-p (funcall (shime-string 'shime-program-not-found) shime-program))
+        (progn
+          (setq shime-program (read-string (shime-string 'shime-program-new-path) shime-program))
+          (shime))
+      (message (shime-string 'shime-could-not-start)))))
 
 ;; Start the mode
 (defun shime-mode ()
