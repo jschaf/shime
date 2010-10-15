@@ -178,3 +178,8 @@
 (defun shime-query (query f)
   (setq shime-capture-callback f)
   (shime-send-expression query))
+
+;; Acquire exports from a given (loaded) module.
+(defun shime-get-exports (module-name)
+  (shime-query (concat ":browse " module-name)
+               (lambda (exports) (print exports))))
