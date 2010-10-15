@@ -180,8 +180,7 @@
   (shime-send-expression query))
 
 ;; Acquire exports from a given (loaded) module.
-(defun shime-get-exports (module-name)
-  (shime-query (concat ":browse " module-name)
-               (lambda (exports) (print exports))))
+(defun shime-get-exports (module-name f)
+  (shime-query (concat ":browse " module-name) f))
 
 (provide 'shime)
