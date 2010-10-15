@@ -183,3 +183,5 @@
 (defun shime-get-exports (module-name)
   (shime-query (concat ":browse " module-name)
                (lambda (exports) (print exports))))
+
+(provide 'shime)
