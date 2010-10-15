@@ -83,14 +83,15 @@
 
 ;; Process anything recieved from the inferior Haskell process.
 (defun shime-process-filter (process incoming)
-  (if (shime-mutable-p)
-      (shime-echo incoming)))
+  (with-current-buffer (shime-buffer)
+    (when (not buffer-read-only)
+      (shime-echo incoming))))
 
 ;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
   (with-current-buffer (shime-buffer)
     (goto-char (point-max))
-    (insert str)))
+    (insert str))) ;; Dumb way.
 
 ;; Process any status change events (e.g. the process has quit).
 (defun shime-process-sentinel (process event)
