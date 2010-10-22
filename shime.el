@@ -40,6 +40,8 @@
 (defvar shime-capture-callback nil)
 (defvar shime-symbols '())
 (defvar shime-process-buffer "")
+(defvar shime-intermediate nil)
+(defvar shime-first-line t)
 
 ;; English language strings.
 (defvar shime-strings-en
@@ -111,23 +113,36 @@
       (setq shime-capture-callback nil)
       (shime-send-ghci-special (concat "set prompt \""
                                        shime-inner-prompt-string
-                                       "\"")))))
+                                       "\""))
+      (setq shime-first-line t))))
 
 ;; Process anything recieved from the inferior Haskell process.
 (defun shime-process-filter (process input)
-  ;; Append to the buffer
-  (setq shime-process-buffer (concat shime-process-buffer input))
   ;; Peel lines off from the buffer
-  (let ((parts (split-string shime-process-buffer "\r?\n")))
+  (let ((parts (split-string input "\r?\n")) (first t))
     (while (cdr parts)
-      (shime-handle-line (car parts))
-      (setq parts (cdr parts)))
-    (setq shime-process-buffer (car parts))
-    (shime-check-prompt)))
+      (when shime-intermediate
+        (forward-line -1)
+        (shime-delete-line)
+        (setq shime-intermediate nil))
+      (shime-handle-line (if first
+                             (progn
+                               (setq first nil)
+                               (concat shime-process-buffer (car parts)))
+                           (car parts)))
+      (setq parts (cdr parts))
+      (setq shime-process-buffer ""))
+    (if (not (string-match shime-prompt-regex (concat shime-process-buffer input)))
+        (progn (setq shime-intermediate t)
+               (setq shime-process-buffer (concat shime-process-buffer (car parts)))
+               (shime-echo (car parts)))
+      (shime-check-prompt (concat shime-process-buffer input)))))
 
-(defun shime-check-prompt ()
-  (when (string-match shime-prompt-regex shime-process-buffer)
-    (setq shime-process-buffer "")
+(defun shime-check-prompt (s)
+  (when (string-match shime-prompt-regex s)
+    (when shime-first-line
+      (setq shime-process-buffer "")
+      (shime-delete-line)) ;; Kill the old prompt.
     (shime-prompt-trigger)))
 
 (defun shime-handle-line (line)
@@ -137,6 +152,10 @@
 
 (defun shime-prompt-trigger ()
   (shime-echo shime-prompt-string))
+
+(defun shime-delete-line ()
+  (goto-char (point-max))
+  (delete-region (line-beginning-position) (line-end-position)))
 
 ;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
