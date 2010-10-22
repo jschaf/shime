@@ -31,11 +31,15 @@
 (defvar shime-program "ghci")
 (defvar shime-process-name "shime")
 (defvar shime-buffer-name "*shime*")
-(defvar shime-prompt-regex "^λ> \\(.*\\)")
+(defvar shime-prompt-regex "Shime>$")
+(defvar shime-inner-prompt-string "Shime>")
+(defvar shime-custom-prompt-regex "^λ> \\(.*\\)")
+(defvar shime-prompt-string "λ> ")
 (defvar shime-lock nil) ;; Use a queue later.
 (defvar shime-captured-data "")
 (defvar shime-capture-callback nil)
 (defvar shime-symbols '())
+(defvar shime-process-buffer "")
 
 ;; English language strings.
 (defvar shime-strings-en
@@ -97,34 +101,42 @@
 ;; Start the inferior Haskell process.
 (defun shime-start-process ()
   (interactive)
+  (setq shime-process-buffer "") ;; Reset the buffer
   (let ((process-connection-type nil)) ;; Use a pipe.
     (start-process shime-process-name nil (executable-find shime-program))
     (let ((process (get-process shime-process-name)))
       (set-process-filter process #'shime-process-filter)
       (set-process-sentinel process #'shime-process-sentinel)
       (setq shime-response-data nil)
-      (setq shime-capture-callback nil))))
+      (setq shime-capture-callback nil)
+      (shime-send-ghci-special (concat "set prompt \""
+                                       shime-inner-prompt-string
+                                       "\"")))))
 
 ;; Process anything recieved from the inferior Haskell process.
-;; TODO: Make this line buffered.
-;; TODO: Support windows \r\n?
-(defun shime-process-filter (process incoming)
-  (with-current-buffer (shime-buffer)
-    (mapc (lambda (line)
-            (when (not (string= line ""))
-              (if shime-capture-callback
-                  (if (string-match shime-prompt-regex line)
-                      (let ((data shime-captured-data) (f shime-capture-callback))
-                        (setq shime-captured-data "")
-                        (setq shime-capture-callback nil)
-                        (funcall f data))
-                    (setq shime-captured-data 
-                          (if (string= shime-captured-data "")
-                              line
-                            (concat shime-captured-data "\n" line))))
-                (when (not buffer-read-only)
-                  (shime-echo (concat "\n" line))))))
-          (split-string incoming "\n"))))
+(defun shime-process-filter (process input)
+  ;; Append to the buffer
+  (setq shime-process-buffer (concat shime-process-buffer input))
+  ;; Peel lines off from the buffer
+  (let ((parts (split-string shime-process-buffer "\r?\n")))
+    (while (cdr parts)
+      (shime-handle-line (car parts))
+      (setq parts (cdr parts)))
+    (setq shime-process-buffer (car parts))
+    (shime-check-prompt)))
+
+(defun shime-check-prompt ()
+  (when (string-match shime-prompt-regex shime-process-buffer)
+    (setq shime-process-buffer "")
+    (shime-prompt-trigger)))
+
+(defun shime-handle-line (line)
+  (if (string-match shime-prompt-regex line)
+      (shime-prompt-trigger)
+    (shime-echo (concat line "\n"))))
+
+(defun shime-prompt-trigger ()
+  (shime-echo shime-prompt-string))
 
 ;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
@@ -159,6 +171,10 @@
 (defun shime-send-string (s)
   (process-send-string (get-process shime-process-name) s))
 
+;; Send a special GHCi command.
+(defun shime-send-ghci-special (s)
+  (shime-send-expression (concat ":" s)))
+
 ;; Look-up a string with the current language.
 (defun shime-string (n)
   (let ((entry (assoc n shime-lang-set)))
@@ -176,52 +192,8 @@
     (let ((line (buffer-substring-no-properties
                  (line-beginning-position)
                  (line-end-position))))
-      (when (string-match shime-prompt-regex line)
+      (when (string-match shime-custom-prompt-regex line)
+        (shime-echo "\n")
         (shime-send-expression (match-string 1 line))))))
-
-;; Handle tab key press event.
-(defun shime-key-tab ()
-  (interactive)
-  (with-current-buffer (shime-buffer)
-    (let* ((sym (find-tag-default))
-           (completion (try-completion sym shime-symbols)))
-      (when completion
-        (cond ((eq completion t) 
-               (unless (string= (buffer-substring-no-properties (- (point) 1) (point))
-                                " ")
-                 (insert " ")))
-              ((string= completion sym)
-               (let ((completion
-                      (ido-completing-read "Completions: "
-                                           (all-completions sym shime-symbols))))
-                 (when completion
-                   (insert (substring completion (length sym))))))
-              (t (insert (substring completion (length sym)))))))))
-
-(defun shime-query (query f)
-  (setq shime-capture-callback f)
-  (shime-send-expression query))
-
-;; Acquire exports from a given (loaded) module.
-(defun shime-get-exports (module-name f)
-  (shime-query (concat ":browse " module-name) f))
-
-;;Get all exports into a list.
-(defun shime-get-all-exports ()
-  (interactive)
-  (setq shime-symbols '())
-  (mapc
-   (lambda (module)
-     (shime-get-exports
-      module
-      (lambda (exports)
-        (setq shime-symbols
-              (append shime-symbols
-                      (mapcar (lambda (export)
-                             (when (string-match "\\(.+\\) :: " export)
-                               (match-string 1 export)))
-                           (split-string exports "\n")))))))
-   ;; TODO: Detect the real module list from GHCi
-   '("Prelude")))
 
 (provide 'shime)
