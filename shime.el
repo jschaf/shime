@@ -53,7 +53,6 @@
 (defvar shime-intermediate nil)
 (defvar shime-first-line t)
 
-;; English language strings.
 (defvar shime-strings-en
   '((shime-process-died . "The Shime process died. Restart it? ")
     (shime-program-not-found
@@ -61,7 +60,8 @@
          (concat "Unable to find Shime program \"" name
                  "\" in PATH, would you like to enter a new path? ")))
     (shime-program-new-path . "New Shime program path: ")
-    (shime-could-not-start . "Shime could not start.")))
+    (shime-could-not-start . "Shime could not start."))
+  "English language strings.")
 
 ;; Default language set.
 (defvar shime-lang-set shime-strings-en)
