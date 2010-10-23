@@ -1,3 +1,5 @@
+;;; shime.el --- Superior Haskell Integration Mode for Emacs
+
 ;; Copyright (c) 2010, Chris Done
 ;; All rights reserved.
 ;;
@@ -26,7 +28,15 @@
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
 
+
+;;; Commentary:
+
+;; A major mode for interacting with a Haskell inferior process.
+
+;;; Code:
+
 (require 'etags)
+
 
 (defvar shime-program "ghci")
 (defvar shime-process-name "shime")
@@ -40,7 +50,7 @@
 ;; English language strings.
 (defvar shime-strings-en
   '((shime-process-died . "The Shime process died. Restart it? ")
-    (shime-program-not-found 
+    (shime-program-not-found
      . (lambda (name)
          (concat "Unable to find Shime program \"" name
                  "\" in PATH, would you like to enter a new path? ")))
@@ -118,7 +128,7 @@
                         (setq shime-captured-data "")
                         (setq shime-capture-callback nil)
                         (funcall f data))
-                    (setq shime-captured-data 
+                    (setq shime-captured-data
                           (if (string= shime-captured-data "")
                               line
                             (concat shime-captured-data "\n" line))))
@@ -142,7 +152,7 @@
     (shime-mutable)))
 
 ;; Make the buffer immutable.
-(defun shime-immutable () 
+(defun shime-immutable ()
   (with-current-buffer (shime-buffer)
     (setq buffer-read-only t)))
 
@@ -186,7 +196,7 @@
     (let* ((sym (find-tag-default))
            (completion (try-completion sym shime-symbols)))
       (when completion
-        (cond ((eq completion t) 
+        (cond ((eq completion t)
                (unless (string= (buffer-substring-no-properties (- (point) 1) (point))
                                 " ")
                  (insert " ")))
@@ -225,3 +235,5 @@
    '("Prelude")))
 
 (provide 'shime)
+
+;;; shime.el ends here
