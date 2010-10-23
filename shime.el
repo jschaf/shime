@@ -1,5 +1,10 @@
+;; Superior Haskell Interaction Mode for Emacs.
 ;; Copyright (c) 2010, Chris Done
-;; All rights reserved.
+;; All rights reserved. See below for license.
+;;
+;; * Currently only supports GHCi. Hugs might work but probably
+;;   not.
+;; * Not tested on OS X or Windows. Should work on both.
 ;;
 ;; Redistribution and use in source and binary forms, with or
 ;; without modification, are permitted provided that the
@@ -26,50 +31,75 @@
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
 
-(require 'etags)
+;; Customizable variables
+(defvar shime-program "ghci"
+  "The inferior Haskell program to use.")
 
-(defvar shime-program "ghci")
-(defvar shime-process-name "shime")
-(defvar shime-buffer-name "*shime*")
-(defvar shime-prompt-regex "Shime>$")
-(defvar shime-inner-prompt-string "Shime>")
-(defvar shime-custom-prompt-regex "^λ> \\(.*\\)")
-(defvar shime-prompt-string "λ> ")
-(defvar shime-lock nil) ;; Use a queue later.
-(defvar shime-captured-data "")
-(defvar shime-capture-callback nil)
-(defvar shime-symbols '())
-(defvar shime-process-buffer "")
-(defvar shime-intermediate nil)
-(defvar shime-first-line t)
+;; Constants. Shouldn't need to change these.
+(defvar shime-process-name "shime"
+  "The name of the process.")
 
-;; English language strings.
+(defvar shime-buffer-name "*shime*"
+  "The name of the created buffer.")
+
+(defvar shime-inner-prompt-string "Shime>"
+  "Internal prompt string.")
+
+(defvar shime-prompt-regex "Shime>$"
+  "Regex to match the internal prompt string.")
+
+(defvar shime-prompt-string "λ> "
+  "External (actually exposed) prompt string.")
+
+(defvar shime-custom-prompt-regex "^λ> \\(.*\\)"
+  "Regex to match the exposed prompt string.")
+
+(defvar shime-process-buffer ""
+  "Buffer of text received from the inferior Haskell process.")
+
+(defvar shime-intermediate nil
+  "Toggle to indicate that we've received intermediate data with no newline.")
+
+(defvar shime-first-line t
+  "Used to ignore the first internal prompt.")
+
+(defvar shime-history '("")
+  "Used to store the prompt history.")
+
+(defvar shime-history-index 0
+  "The current history cycle index.")
+
+(defvar shime-history-length 0
+  "Just an optimisation so that we don't have to do an O(n) operation.")
+
 (defvar shime-strings-en
-  '((shime-process-died . "The Shime process died. Restart it? ")
+  '((shime-process-died . "The inferior Haskell process died. Restart it? ")
     (shime-program-not-found 
      . (lambda (name)
          (concat "Unable to find Shime program \"" name
                  "\" in PATH, would you like to enter a new path? ")))
     (shime-program-new-path . "New Shime program path: ")
-    (shime-could-not-start . "Shime could not start.")))
+    (shime-could-not-start . "Shime could not start."))
+  "English language strings.")
 
-;; Default language set.
-(defvar shime-lang-set shime-strings-en)
+(defvar shime-lang-set shime-strings-en
+  "Default language set.")
 
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
     (define-key map (kbd "C-j") 'shime-key-ret)
-    (define-key map (kbd "TAB") 'shime-key-tab)
-    map))
+    (define-key map (kbd "M-p") 'shime-key-prev)
+    (define-key map (kbd "M-n") 'shime-key-next)
+    map)
+  "Shime mode map.")
 
-;; Define the mode
 (define-derived-mode shime-mode nil "Shime"
   (make-local-variable 'shime-mode)
   (setq shime-mode t))
 
-;; Start Shime.
 (defun shime ()
+  "Start Shime."
   (interactive)
   (if (executable-find shime-program)
       (with-current-buffer (shime-buffer)
@@ -85,8 +115,8 @@
           (shime))
       (message (shime-string 'shime-could-not-start)))))
 
-;; Start the mode
 (defun shime-mode ()
+  "Switch to Shime mode."
   (interactive)
   (with-current-buffer (shime-buffer)
     (kill-all-local-variables)
@@ -96,12 +126,12 @@
     (setq mode-name "Shime")
     (run-mode-hooks 'shime-mode-hook)))
 
-;; Get the shime buffer.
 (defun shime-buffer ()
+  "Get the shime buffer."
   (get-buffer-create shime-buffer-name))
 
-;; Start the inferior Haskell process.
 (defun shime-start-process ()
+  "Start the inferior Haskell process."
   (interactive)
   (setq shime-process-buffer "") ;; Reset the buffer
   (let ((process-connection-type nil)) ;; Use a pipe.
@@ -110,19 +140,17 @@
       (set-process-filter process #'shime-process-filter)
       (set-process-sentinel process #'shime-process-sentinel)
       (setq shime-response-data nil)
-      (setq shime-capture-callback nil)
       (shime-send-ghci-special (concat "set prompt \""
                                        shime-inner-prompt-string
                                        "\""))
       (setq shime-first-line t))))
 
-;; Process anything recieved from the inferior Haskell process.
 (defun shime-process-filter (process input)
+  "Process anything recieved from the inferior Haskell process."
   ;; Peel lines off from the buffer
   (let ((parts (split-string input "\r?\n")) (first t))
     (while (cdr parts)
       (when shime-intermediate
-        (forward-line -1)
         (shime-delete-line)
         (setq shime-intermediate nil))
       (shime-handle-line (if first
@@ -139,32 +167,41 @@
       (shime-check-prompt (concat shime-process-buffer input)))))
 
 (defun shime-check-prompt (s)
+  "Check for a prompt in the input buffer."
   (when (string-match shime-prompt-regex s)
     (when shime-first-line
       (setq shime-process-buffer "")
+      (setq shime-first-line nil)
       (shime-delete-line)) ;; Kill the old prompt.
     (shime-prompt-trigger)))
 
 (defun shime-handle-line (line)
+  "Handle a line recieved from the inferior GHCi process."
   (if (string-match shime-prompt-regex line)
       (shime-prompt-trigger)
     (shime-echo (concat line "\n"))))
 
 (defun shime-prompt-trigger ()
+  "Trigger showing the prompt. This might be hooked later."
+  (shime-prompt))
+
+(defun shime-prompt ()
+  "Show the Shime prompt."
   (shime-echo shime-prompt-string))
 
 (defun shime-delete-line ()
+  "Delete the current line in the buffer."
   (goto-char (point-max))
   (delete-region (line-beginning-position) (line-end-position)))
 
-;; Echo a new entry in the Shime buffer.
 (defun shime-echo (str)
+  "Echo an arbitrary string in the buffer at the end."
   (with-current-buffer (shime-buffer)
     (goto-char (point-max))
     (insert str))) ;; Dumb way.
 
-;; Process any status change events (e.g. the process has quit).
 (defun shime-process-sentinel (process event)
+  "Process any status change events (e.g. the process has quit)."
   (shime-immutable)
   (if (not (string= event ""))
       (when (y-or-n-p (shime-string 'shime-process-died))
@@ -172,30 +209,30 @@
         (shime-mutable))
     (shime-mutable)))
 
-;; Make the buffer immutable.
 (defun shime-immutable () 
+  "Make the buffer immutable."
   (with-current-buffer (shime-buffer)
     (setq buffer-read-only t)))
 
-;; Make the buffer mutable.
 (defun shime-mutable ()
+  "Make the buffer mutable."
   (with-current-buffer (shime-buffer)
     (setq buffer-read-only nil)))
 
-;; Send a Haskell expression.
 (defun shime-send-expression (e)
+  "Send a Haskell expression."
   (shime-send-string (concat e "\n")))
 
-;; Send an arbitrary string to the process.
 (defun shime-send-string (s)
+  "Send an arbitrary string to the process."
   (process-send-string (get-process shime-process-name) s))
 
-;; Send a special GHCi command.
 (defun shime-send-ghci-special (s)
+  "Send a special GHCi command."
   (shime-send-expression (concat ":" s)))
 
-;; Look-up a string with the current language.
 (defun shime-string (n)
+  "Look-up a string with the current language."
   (let ((entry (assoc n shime-lang-set)))
     (if entry
         (cdr entry)
@@ -204,8 +241,8 @@
               (symbol-name n)
               " from language set.")))))
 
-;; Handle return event.
 (defun shime-key-ret ()
+  "Handle return event."
   (interactive)
   (with-current-buffer (shime-buffer)
     (let ((line (buffer-substring-no-properties
