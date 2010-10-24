@@ -1,10 +1,17 @@
-;; Superior Haskell Interaction Mode for Emacs.
+;;; shime.el --- Superior Haskell Integration Mode for Emacs
+;;
 ;; Copyright (c) 2010, Chris Done
 ;; All rights reserved. See below for license.
 ;;
+;;; Commentary:
+;;
+;; A major mode for interacting with a Haskell inferior process.
+;
 ;; * Currently only supports GHCi. Hugs might work but probably
 ;;   not.
 ;; * Not tested on OS X or Windows. Should work on both.
+;;
+;;; License:
 ;;
 ;; Redistribution and use in source and binary forms, with or
 ;; without modification, are permitted provided that the
@@ -30,29 +37,44 @@
 ;; LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
+;;
+;;; Code:
 
 ;; Customizable variables
 (defvar shime-program "ghci"
   "The inferior Haskell program to use.")
-
-;; Constants. Shouldn't need to change these.
-(defvar shime-process-name "shime"
-  "The name of the process.")
-
-(defvar shime-buffer-name "*shime*"
-  "The name of the created buffer.")
-
-(defvar shime-inner-prompt-string "Shime>"
-  "Internal prompt string.")
-
-(defvar shime-prompt-regex "Shime>$"
-  "Regex to match the internal prompt string.")
 
 (defvar shime-prompt-string "λ> "
   "External (actually exposed) prompt string.")
 
 (defvar shime-custom-prompt-regex "^λ> \\(.*\\)"
   "Regex to match the exposed prompt string.")
+
+(defvar shime-process-name "shime"
+  "The name of the process.")
+
+(defvar shime-buffer-name "*shime*"
+  "The name of the created buffer.")
+
+(defvar shime-strings-en
+  '((shime-process-died . "The Shime process died. Restart it? ")
+    (shime-program-not-found
+     . (lambda (name)
+         (concat "Unable to find Shime program \"" name
+                 "\" in PATH, would you like to enter a new path? ")))
+    (shime-program-new-path . "New Shime program path: ")
+    (shime-could-not-start . "Shime could not start."))
+  "English language strings.")
+
+(defvar shime-lang-set shime-strings-en
+  "Default language set.")
+
+;; Constants. Shouldn't need to change these.
+(defvar shime-inner-prompt-string "Shime>"
+  "Internal prompt string.")
+
+(defvar shime-prompt-regex "Shime>$"
+  "Regex to match the internal prompt string.")
 
 (defvar shime-process-buffer ""
   "Buffer of text received from the inferior Haskell process.")
@@ -71,19 +93,6 @@
 
 (defvar shime-history-length 0
   "Just an optimisation so that we don't have to do an O(n) operation.")
-
-(defvar shime-strings-en
-  '((shime-process-died . "The inferior Haskell process died. Restart it? ")
-    (shime-program-not-found 
-     . (lambda (name)
-         (concat "Unable to find Shime program \"" name
-                 "\" in PATH, would you like to enter a new path? ")))
-    (shime-program-new-path . "New Shime program path: ")
-    (shime-could-not-start . "Shime could not start."))
-  "English language strings.")
-
-(defvar shime-lang-set shime-strings-en
-  "Default language set.")
 
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
@@ -116,7 +125,7 @@
       (message (shime-string 'shime-could-not-start)))))
 
 (defun shime-mode ()
-  "Switch to Shime mode."
+  "Start Shime mode."
   (interactive)
   (with-current-buffer (shime-buffer)
     (kill-all-local-variables)
@@ -195,7 +204,7 @@
   (delete-region (line-beginning-position) (line-end-position)))
 
 (defun shime-echo (str)
-  "Echo an arbitrary string in the buffer at the end."
+  "Echo a new entry in the Shime buffer."
   (with-current-buffer (shime-buffer)
     (goto-char (point-max))
     (insert str))) ;; Dumb way.
@@ -209,7 +218,7 @@
         (shime-mutable))
     (shime-mutable)))
 
-(defun shime-immutable () 
+(defun shime-immutable ()
   "Make the buffer immutable."
   (with-current-buffer (shime-buffer)
     (setq buffer-read-only t)))
@@ -253,3 +262,5 @@
         (shime-send-expression (match-string 1 line))))))
 
 (provide 'shime)
+
+;;; shime.el ends here
