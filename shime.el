@@ -6,7 +6,7 @@
 ;;; Commentary:
 ;;
 ;; A major mode for interacting with a Haskell inferior process.
-;
+;;
 ;; * Currently only supports GHCi. Hugs might work but probably
 ;;   not.
 ;; * Not tested on OS X or Windows. Should work on both.
@@ -63,13 +63,15 @@
          (concat "Unable to find Shime program \"" name
                  "\" in PATH, would you like to enter a new path? ")))
     (shime-program-new-path . "New Shime program path: ")
-    (shime-could-not-start . "Shime could not start."))
+    (shime-could-not-start . "Shime could not start.")
+    (shime-ask-change-root . "Do you want to change the root directory? ")
+    (shime-new-root . "New project root: "))
   "English language strings.")
 
 (defvar shime-lang-set shime-strings-en
   "Default language set.")
 
-;; Constants. Shouldn't need to change these.
+;; Constants and globals. Shouldn't need to change these.
 (defvar shime-inner-prompt-string "Shime>"
   "Internal prompt string.")
 
@@ -102,6 +104,9 @@
     (define-key map (kbd "M-n") 'shime-key-next)
     map)
   "Shime mode map.")
+
+(defvar shime-root nil
+  "The root directory for loading Haskell files.")
 
 (define-derived-mode shime-mode nil "Shime"
   (make-local-variable 'shime-mode)
@@ -160,7 +165,7 @@
   (let ((parts (split-string input "\r?\n")) (first t))
     (while (cdr parts)
       (when shime-intermediate
-        (shime-delete-line)
+        (with-current-buffer (shime-buffer) (shime-delete-line))
         (setq shime-intermediate nil))
       (shime-handle-line (if first
                              (progn
@@ -196,12 +201,16 @@
 
 (defun shime-prompt ()
   "Show the Shime prompt."
-  (shime-echo shime-prompt-string))
+  (with-current-buffer (shime-buffer)
+    (with-selected-window (display-buffer (shime-buffer) nil 'visible)
+      (shime-echo shime-prompt-string)
+      (end-of-buffer))))
 
 (defun shime-delete-line ()
   "Delete the current line in the buffer."
-  (goto-char (point-max))
-  (delete-region (line-beginning-position) (line-end-position)))
+  (with-current-buffer (shime-buffer)
+    (goto-char (point-max))
+    (delete-region (line-beginning-position) (line-end-position))))
 
 (defun shime-echo (str)
   "Echo a new entry in the Shime buffer."
@@ -297,13 +306,86 @@
   (shime-delete-line)
   (shime-prompt))
 
-(defun shime-get-load-path ()
-  "Get the current load path from the buffer filename."
-  )
+(defun shime-load-file ()
+  "Load the file associated with the current buffer."
+  (save-buffer)
+  (if shime-root
+      (let ((path (cond ((shime-relative-to shime-root (shime-buffer-directory))
+                         (shime-load-file-relative))
+                        ((shime-ask-change-root)
+                         (shime-prompt-root (shime-buffer-directory))
+                         (shime-/ shime-root (shime-buffer-filename)))
+                        (t (buffer-file-name)))))
+        (shime-send-expression (concat ":load " path)))
+    (progn (setq shime-root (shime-buffer-directory))
+           (shime-send-expression (concat ":cd " shime-root))
+           (shime-load-file))))
 
-(defun shime-buffer-path ()
+(defun shime-set-root (root)
+  (setq shime-root root)
+  (shime-send-expression (concat ":cd " root)))
+
+(defun shime-choose-root ()
+  (interactive)
+  "Prompt to set the root path (defaults to current root)."
+  (shime-prompt-root shime-root))
+
+(defun shime-prompt-root (def)
+  (interactive)
+  "Prompt to set the root path with a default vaule."
+  (shime-set-root (read-from-minibuffer (shime-string 'shime-new-root)
+                                        def)))
+
+(defun shime-ask-change-root ()
+  (y-or-n-p (shime-string 'shime-ask-change-root)))
+
+(defun shime-load-file-relative ()
+  "Load a file relative to the current root."
+  (cond ((string= shime-root (shime-buffer-directory))
+         (shime-buffer-filename))
+        ((shime-relative-to shime-root (shime-buffer-directory))
+         (shime-/
+          (shime-strings-suffix (shime-buffer-directory)
+                                (concat (shime-strip-/ shime-root)
+                                        "/"))
+          (shime-buffer-filename)))))
+
+(defun shime-relative-to (a b)
+  "Is a path b relative to path a?"
+  (shime-is-prefix-of a b))
+
+(defun shime-strip-/ (a)
+  "Strip trailing slashes."
+  (replace-regexp-in-string "[/\\\\]+$" "" a))
+
+(defun shime-/ (a b)
+  "Append two paths."
+  (concat (shime-strip-/ a)
+          "/"
+          (replace-regexp-in-string "^[/\\\\]+" "" b)))
+
+(defun shime-strings-suffix (a b)
+  "Return the suffix of of the longer of two strings."
+  (substring (if (> (length a) (length b)) a b)
+             (min (length a) (length b))
+             (max (length a) (length b))))
+
+(defun shime-is-prefix-of (a b)
+  "Is one string a prefix of another?"
+  (and (<= (length a) (length b))
+       (string= (substring b 0 (length a)) a)))
+
+(defun shime-buffer-filename ()
+  "Get the filename of the buffer."
+  (shime-path-filename (buffer-file-name)))
+
+(defun shime-buffer-directory ()
   "Get the directory of the buffer."
   (shime-path-directory (buffer-file-name)))
+
+(defun shime-path-filename (path)
+  "Get the filename part of a path."
+  (car (last (shime-split-path path))))
 
 ;; Haven't seen an Elisp function that does this.
 (defun shime-path-directory (path)
@@ -311,7 +393,7 @@
   (if (file-directory-p path)
       path
     ;; I think `/' works fine on Windows.
-    (mapconcat 'identity (butlast (shime-split-path path)) "/")))
+    (reduce #'shime-/ (butlast (shime-split-path path)))))
 
 (defun shime-split-path (path)
   "Split a filename into path segments."
