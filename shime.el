@@ -341,7 +341,7 @@
 
 (defun shime-load-file-relative ()
   "Load a file relative to the current root."
-  (cond ((string= shime-root (shime-buffer-directory))
+  (cond ((string= (shime-strip-/ shime-root) (shime-strip-/ (shime-buffer-directory)))
          (shime-buffer-filename))
         ((shime-relative-to shime-root (shime-buffer-directory))
          (shime-/
@@ -352,7 +352,7 @@
 
 (defun shime-relative-to (a b)
   "Is a path b relative to path a?"
-  (shime-is-prefix-of a b))
+  (shime-is-prefix-of (shime-strip-/ a) (shime-strip-/ b)))
 
 (defun shime-strip-/ (a)
   "Strip trailing slashes."
