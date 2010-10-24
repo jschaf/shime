@@ -595,3 +595,7 @@
 (defun shime-split-path (path)
   "Split a filename into path segments."
   (split-string path "[/\\\\]"))
+
+(provide 'shime)
+
+;;; shime.el ends here
