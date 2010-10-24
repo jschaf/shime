@@ -258,8 +258,44 @@
                  (line-beginning-position)
                  (line-end-position))))
       (when (string-match shime-custom-prompt-regex line)
-        (shime-echo "\n")
-        (shime-send-expression (match-string 1 line))))))
+        (let ((expr (match-string 1 line)))
+          (add-to-list 'shime-history expr)
+          (setq shime-history-length (1+ shime-history-length))
+          (setq shime-history-index (1- shime-history-length))
+          (shime-echo "\n")
+          (shime-send-expression expr))))))
+
+(defun shime-step-history (direction)
+  "Update the history index."
+  (setq shime-history-index
+        (if (> shime-history-length 0)
+            (mod (+ shime-history-index direction)
+                 shime-history-length)
+          0)))
+
+(defun shime-key-prev ()
+  "Go back in the history."
+  (interactive)
+  (when (> shime-history-length 0)
+    (with-current-buffer (shime-buffer)
+      (shime-step-history -1)
+      (shime-clear-prompt)
+      (insert (nth shime-history-index shime-history)))))
+
+(defun shime-key-next ()
+  "Go forward in the history."
+  (interactive)
+  (when (> shime-history-length 0)
+    (with-current-buffer (shime-buffer)
+      (shime-step-history 1)
+      (shime-clear-prompt)
+      (insert (nth shime-history-index shime-history)))))
+
+(defun shime-clear-prompt ()
+  "Cleat the prompt."
+  (interactive)
+  (shime-delete-line)
+  (shime-prompt))
 
 (provide 'shime)
 
