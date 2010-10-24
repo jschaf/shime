@@ -297,6 +297,26 @@
   (shime-delete-line)
   (shime-prompt))
 
+(defun shime-get-load-path ()
+  "Get the current load path from the buffer filename."
+  )
+
+(defun shime-buffer-path ()
+  "Get the directory of the buffer."
+  (shime-path-directory (buffer-file-name)))
+
+;; Haven't seen an Elisp function that does this.
+(defun shime-path-directory (path)
+  "Get the directory part of a path."
+  (if (file-directory-p path)
+      path
+    ;; I think `/' works fine on Windows.
+    (mapconcat 'identity (butlast (shime-split-path path)) "/")))
+
+(defun shime-split-path (path)
+  "Split a filename into path segments."
+  (split-string path "[/\\\\]"))
+
 (provide 'shime)
 
 ;;; shime.el ends here
