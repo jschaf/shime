@@ -86,39 +86,64 @@
 
 ;; Constants
 
-(defvar shime-strings-en
-  `((process-died . "The Shime process died. Restart it? ")
-    (program-not-found
-     . (lambda (name)
-         (concat "Unable to find Shime program \"" name
-                 "\", what's the right path? ")))
-    (could-not-start . "Shime could not start.")
-    (ask-change-root . "Do you want to change the root directory? ")
-    (new-root . "New project root: ")
-    (enter-session-name . "Session name: ")
-    (kill-session . "Kill Shime session: ")
-    (kill-process . "Kill Shime process: ")
-    (kill-buffer . "Kill Shime buffer: ")
-    (shime-ask-change-root . "Do you want to change the root directory? ")
-    (shime-new-load-root . "New load root: ")
-    (shime-new-project-root . "New project root: ")
-    (enter-session-name-exists
-     . "Session already exists, please enter a different session name: ")
-    (session-already-started . ,(concat "Shime session(s) already started. "
-                                        "Start a new session? "))
-    (recieved-data-from-rogue-process
-     . (lambda (process) (concat "Recieved data from rogue process " process)))
-    (recieved-data-from-unattached-process
-     . (lambda (process) (concat "Recieved data from unattached process " process)))
-    (recieved-data-for-inactive-session
-     . (lambda (process session)
-         (concat "Recieved data from process " process
-                 " on inactive session " session))))
-  "English language strings.")
+(defvar shime-strings-en "English language strings.")
+(setq shime-strings-en
+      `((process-died . "The Shime process died. Restart it? ")
+        (program-not-found
+         . (lambda (name)
+             (concat "Unable to find Shime program \"" name
+                     "\", what's the right path? ")))
+        (could-not-start . "Shime could not start.")
+        (enter-session-name . "Session name: ")
+        (kill-session . "Kill Shime session: ")
+        (kill-process . "Kill Shime process: ")
+        (kill-buffer . "Kill Shime buffer: ")
+        (start-shime . "Start Shime? ")
+        (ask-change-root . "Do you want to change the root directory? ")
+        (new-load-root . "New load root: ")
+        (new-cabal-root . "New Cabal root: ")
+        (choose-session . "Choose session: ")
+        (choose-buffer-ghci-process . "Choose GHCi process: ")
+        (needed-a-session . "The command needed a Shime session. Aborted.")
+        (buffer-session-was-set
+         . (lambda (session-name)
+             (concat "Buffer session set to: " session-name)))
+        (buffer-session-was-set-default
+         . (lambda (session-name)
+             (concat "Buffer session set to (default): " session-name
+                     " (Use `M-x shime-choose-buffer-session` to change.)")))
+        (buffer-ghci-process-was-set
+         . (lambda (process-name)
+             (concat "Buffer GHCi process set to: " process-name)))
+        (buffer-ghci-process-was-set-default
+         . (lambda (process-name)
+             (concat "Buffer GHCi process set to (default): " process-name
+                     " (Use `M-x shime-choose-buffer-ghci-process` to change.)")))
+        (buffer-cabal-process-was-set
+         . (lambda (process-name)
+             (concat "Buffer Cabal process set to: " process-name)))
+        (buffer-cabal-process-was-set-default
+         . (lambda (process-name)
+             (concat "Buffer Cabal process set to (default): " process-name
+                     " (Use `M-x shime-choose-buffer-cabal-process` to change.)")))
+        (choose-buffer-session . "Choose session for this buffer: ")
+        (enter-session-name-exists
+         . "Session already exists, please enter a different session name: ")
+        (session-already-started . ,(concat "Shime session(s) already started. "
+                                            "Start a new session? "))
+        (recieved-data-from-rogue-process
+         . (lambda (process) (concat "Recieved data from rogue process " process)))
+        (recieved-data-from-unattached-process
+         . (lambda (process) (concat "Recieved data from unattached process " process)))
+        (recieved-data-for-inactive-session
+         . (lambda (process session)
+             (concat "Recieved data from process " process
+                     " on inactive session " session)))))
 
-(defvar shime-languages `(("en" . ,shime-strings-en))
+(defvar shime-languages
   "All the available languages. Re-evaluate this when
  updating an individual language at runtime.")
+(setq shime-languages `(("en" . ,shime-strings-en)))
 
 ;; TODO: Get dynamically from Cabal --help
 (defvar shime-cabal-commands
@@ -155,12 +180,6 @@
 (defvar shime-buffers '()
   "List of Shime buffers.")
 
-;; TODO: This should be part of sessions.
-(defvar shime-load-root nil)
-
-;; TODO: This should be part of sessions.
-(defvar shime-project-root nil)
-
 ;; Data types
 
 (defstruct
@@ -168,9 +187,11 @@
    (:constructor
     make-shime-config
     (&key (language shime-default-language)
-          name)))
+          name
+          cabal-load-path)))
   language
-  name)
+  name
+  cabal-load-path)
 
 (defstruct
   (shime-session
@@ -198,7 +219,8 @@
           sentinel
           process
           buffer
-          type)))
+          type
+          pwd)))
   program-path
   name
   session
@@ -206,7 +228,8 @@
   sentinel
   process
   buffer
-  type)
+  type
+  pwd)
 
 (defstruct
   (shime-buffer
@@ -231,11 +254,12 @@
       (progn (add-to-list 'shime-sessions (cons name session))
              session))))
 
-(defun shime-make-config (name)
+(defun shime-make-config (name cabal-load-path)
   "Make a Shime config object."
-  (make-shime-config :name name))
+  (make-shime-config :name name
+                     :cabal-load-path cabal-load-path))
 
-(defun shime-make-process (session name program-path filter sentinel type)
+(defun shime-make-process (session name program-path filter sentinel type pwd)
   "Make a Shime process object."
   (let ((process-connection-type nil))
     (let ((process-ref (start-process name nil (shime-executable-find program-path))))
@@ -248,7 +272,8 @@
                       :filter filter
                       :sentinel sentinel
                       :process process-ref
-                      :type type)))
+                      :type type
+                      :pwd pwd)))
         (add-to-list 'shime-processes (cons name process))
         process))))
 
@@ -281,7 +306,8 @@
   (if (null shime-sessions)
       (shime-start-session
        :name shime-default-session-name
-       :config (shime-make-config shime-default-session-name))
+       :config (shime-make-config shime-default-session-name
+                                  nil))
     (shime-maybe-start-session)))
 
 (defun shime-start-named-session ()
@@ -290,7 +316,7 @@
   (let ((name (shime-prompt-for-session-name)))
     (shime-start-session
      :name name
-     :config (shime-make-config name))))
+     :config (shime-make-config name nil))))
 
 (defun shime-kill-session ()
   "Kill a Shime session and all associated processes and buffers."
@@ -315,56 +341,162 @@
 
 (defun shime-choose-load-root ()
   (interactive)
-  "Prompt to set the root load path (defaults to current root)."
-  (shime-prompt-load-root shime-load-root))
+  "Prompt to set the root load path (defaults to current directory)."
+  (shime-with-buffer-ghci-process
+   process
+   (shime-prompt-load-root process shime-load-root)))
 
-(defun shime-choose-project-root ()
+(defun shime-choose-cabal-root ()
   (interactive)
-  "Prompt to set the root project path (defaults to current root)."
-  (shime-prompt-project-root shime-project-root))
-
-(defun shime-cabal-shell-dwim (expr)
-  "Run a Cabal command."
-  (interactive)
-  (let ((buffer (assoc (concat "*" shime-default-session-name "*") shime-buffers)))
-    (if buffer
-        (shime-buffer-cabal-command (cdr buffer) expr)
-      (progn (shime)
-             (shime-cabal-shell-dwim expr)))))
-
-(defun shime-cabal-command-dwim (expr)
-  "Run a Cabal command."
-  (interactive)
-  (shime-cabal-shell-dwim (concat shime-cabal-program-path " " expr)))
+  "Prompt to set the root Cabal path (defaults to current directory)."
+  (shime-with-buffer-ghci-process
+   process
+   (shime-prompt-cabal-root process shime-cabal-root)))
 
 (defun shime-cabal-configure ()
   "Run the Cabal configure command."
   (interactive)
-  (shime-cabal-command-dwim "configure"))
+  (shime-cabal-command "configure"))
 
 (defun shime-cabal-build ()
   "Run the Cabal build command."
   (interactive)
-  (shime-cabal-command-dwim "build"))
+  (shime-cabal-command "build"))
 
 (defun shime-cabal-clean ()
   "Run the Cabal clean command."
   (interactive)
-  (shime-cabal-command-dwim "clean"))
+  (shime-cabal-command "clean"))
 
 (defun shime-cabal-install ()
   "Run the Cabal install command."
   (interactive)
-  (shime-cabal-command-dwim "install"))
+  (shime-cabal-command "install"))
 
 (defun shime-cabal-ido (&optional custom)
   "Interactively choose a cabal command to run."
   (interactive "P")
   (let ((command (ido-completing-read "Command: " shime-cabal-commands)))
     (if custom
-        (shime-cabal-command-dwim (read-from-minibuffer "Command: " command))
-      (shime-cabal-command-dwim command))))
-    
+        (shime-cabal-command (read-from-minibuffer "Command: " command))
+      (shime-cabal-command command))))
+
+(defun shime-choose-buffer-session-or-default ()
+  "Choose the session for this buffer or just default if there's only one session."
+  (interactive)
+  (shime-with-any-session
+   (if (= (length shime-sessions) 1)
+       (progn (setq shime-session-of-buffer (car (car shime-sessions)))
+              (message (funcall (shime-string 'buffer-session-was-set-default)
+                                shime-session-of-buffer))
+              shime-session-of-buffer)
+     (shime-choose-buffer-session))))
+
+(defun shime-choose-buffer-session ()
+  "Choose the session for this buffer."
+  (interactive)
+  (shime-with-any-session
+   (setq shime-session-of-buffer 
+         (ido-completing-read (shime-string 'choose-buffer-session)
+                              (mapcar 'car shime-sessions))))
+  (message (funcall (shime-string 'buffer-session-was-set) shime-session-of-buffer))
+  shime-session-of-buffer)
+
+(defun shime-choose-buffer-ghci-process-or-default ()
+  "Choose the buffer for this buffer or just default if there's only one buffer."
+  (interactive)
+  (shime-with-session 
+   session
+   (if (= (length (shime-session-ghci-processes session)) 1)
+       (progn (setq shime-ghci-process-of-buffer
+                    (shime-process-name
+                     (car (shime-session-ghci-processes session))))
+              (message (funcall (shime-string
+                                 'buffer-ghci-process-was-set-default)
+                                shime-ghci-process-of-buffer))
+              shime-ghci-process-of-buffer)
+     (shime-choose-buffer-ghci-process))))
+
+(defun shime-choose-buffer-ghci-process ()
+  "Choose the buffer for this buffer."
+  (interactive)
+  (shime-with-session
+   session
+   (setq shime-ghci-process-of-buffer 
+         (ido-completing-read (shime-string 'choose-buffer-ghci-process)
+                              (mapcar 'shime-process-name
+                                      (shime-session-ghci-processes session)))))
+  (message (funcall (shime-string 'buffer-ghci-process-was-set)
+                    shime-ghci-process-of-buffer))
+  shime-ghci-process-of-buffer)
+
+(defun shime-choose-buffer-cabal-process-or-default ()
+  "Choose the buffer for this buffer or just default if there's only one buffer."
+  (interactive)
+  (shime-with-session
+   session
+   (if (= (length (shime-session-cabal-processes session)) 1)
+       (progn (setq shime-cabal-process-of-buffer
+                    (shime-process-name
+                     (car (shime-session-cabal-processes session))))
+              (message (funcall (shime-string
+                                 'buffer-cabal-process-was-set-default)
+                                shime-cabal-process-of-buffer))
+              shime-cabal-process-of-buffer)
+     (shime-choose-buffer-cabal-process))))
+
+(defun shime-choose-buffer-cabal-process ()
+  "Choose the buffer for this buffer."
+  (interactive)
+  (shime-with-session
+   session
+   (setq shime-cabal-process-of-buffer 
+         (ido-completing-read (shime-string 'choose-buffer-cabal-process)
+                              (mapcar 'shime-process-name
+                                      (shime-session-cabal-processes session)))))
+  (message (funcall (shime-string 'buffer-cabal-process-was-set)
+                    shime-cabal-process-of-buffer))
+  shime-cabal-process-of-buffer)
+
+(defun shime-cabal-command (cmd)
+  (interactive)
+  (shime-with-buffer-cabal-process
+   process
+   (progn
+     (save-buffer)
+     (if (shime-process-pwd process)
+         (shime-cabal-send-cmd process cmd)
+       (progn (shime-prompt-cabal-root
+               process
+               (shime-buffer-directory))
+              (shime-cabal-command cmd))))))
+
+(defun shime-load-file ()
+  "Load the file associated with the current buffer with the
+  current session GHCi process."
+  (interactive)
+  (shime-with-buffer-ghci-process
+   process
+   (progn
+     (save-buffer)
+     (if (shime-process-pwd process)
+         (let ((path (cond ((shime-relative-to
+                             (shime-process-pwd process)
+                             (shime-buffer-directory))
+                            (shime-load-file-relative process))
+                           ((shime-ask-change-root)
+                            (shime-prompt-load-root process
+                                                    (shime-buffer-directory))
+                            (shime-/ (shime-process-pwd process)
+                                     (shime-buffer-filename)))
+                           (t (buffer-file-name)))))
+           (shime-buffer-ghci-send-expression
+            (shime-process-buffer process)
+            process
+            (concat ":load " path)))
+       (progn (shime-set-load-root process (shime-buffer-directory))
+              (shime-load-file))))))
+
 ;; Key binding handlers
 
 (defun shime-key-ret ()
@@ -379,23 +511,15 @@
         (when buffer
           ;; TODO: Come up with a nice way for processes to hook
           ;; into inputs, making this generic.
-          (shime-buffer-ghci-send-expression (cdr buffer) (match-string 1 line)))))))
+          (shime-buffer-ghci-send-expression (cdr buffer)
+                                             (match-string 1 line)))))))
 
-;; TODO: Associate file buffers with specific sessions
-(defun shime-load-file ()
-  "Load the file associated with the current buffer."
+(defun shime-reset-everything-because-it-broke ()
+  "Reset everything because it broke."
   (interactive)
-  (save-buffer)
-  (if shime-load-root
-      (let ((path (cond ((shime-relative-to shime-load-root (shime-buffer-directory))
-                         (shime-load-file-relative))
-                        ((shime-ask-change-root)
-                         (shime-prompt-load-root (shime-buffer-directory))
-                         (shime-/ shime-load-root (shime-buffer-filename)))
-                        (t (buffer-file-name)))))
-        (shime-ghci-send-expression-dwim (concat ":load " path)))
-    (progn (shime-set-load-root (shime-buffer-directory))
-           (shime-load-file))))
+  (setq shime-sessions nil)
+  (setq shime-buffers nil)
+  (setq shime-processes nil))
 
 ;; Macros
 
@@ -416,7 +540,109 @@
                    (,process-name (cdr process)))
                (progn ,body))))))))
 
+(defmacro shime-with-any-session (body)
+  "The code this call needs a session. Ask to create one if needs be."
+  `(if (null shime-sessions)
+       (if (y-or-n-p (shime-string 'start-shime))
+           (progn (shime)
+                  ,body)
+         (message (shime-string 'needed-a-session)))
+     ,body))
+
+(defmacro shime-with-session (name body)
+  "The code this call needs a session. Ask to create one if needs be."
+  `(shime-with-any-session
+    (if (= 1 (length shime-sessions))
+        (let ((,name (cdar shime-sessions)))
+          ,body)
+      (let ((,name (assoc (shime-choose-session) shime-sessions)))
+        (if ,name
+            (let ((,name (cdr ,name)))
+              ,body)
+          (message (shime-string 'needed-a-session)))))))
+
+;; TODO: Maybe a bit more interactivity.
+(defmacro shime-with-buffer-ghci-process (name body)
+  (let ((sym (gensym)) (cons (gensym)))
+    `(let ((,sym (shime-get-buffer-ghci-process)))
+       (if ,sym
+           (let ((,cons (assoc ,sym shime-processes)))
+             (if ,cons
+                 (let ((,name (cdr ,cons)))
+                   ,body)))))))
+
+;; TODO: Maybe a bit more interactivity.
+(defmacro shime-with-buffer-cabal-process (name body)
+  (let ((sym (gensym)) (cons (gensym)))
+    `(let ((,sym (shime-get-buffer-cabal-process)))
+       (if ,sym
+           (let ((,cons (assoc ,sym shime-processes)))
+             (if ,cons
+                 (let ((,name (cdr ,cons)))
+                   ,body)))))))
+
 ;; Procedures
+
+(defun shime-choose-session ()
+  "Ask the user to choose from the list of sessions."
+  (ido-completing-read (shime-string 'choose-session)
+                       (mapcar 'car shime-sessions)))
+
+(defun shime-start-new-ghci-process (session name &optional buffer)
+  "Start a new GHCi process and attach to the given session."
+  (let ((ghci-process (shime-make-ghci-process session
+                                               name
+                                               shime-default-ghci-path
+                                               config)))
+    (shime-attach-process-to-session session ghci-process)
+    (when buffer (shime-attach-process-to-buffer ghci-process buffer))
+    ghci-process))
+
+(defun shime-start-new-cabal-process (session name &optional buffer)
+  "Start a new Cabal process and attach to the given session."
+  (let ((cabal-process (shime-make-cabal-process session
+                                                 name
+                                                 shime-default-shell-path
+                                                 config)))
+    (shime-attach-process-to-session session cabal-process)
+    (when buffer (shime-attach-process-to-buffer cabal-process buffer))
+    cabal-process))
+
+(defun shime-start-new-buffer (session name)
+  "Start a new buffer and attach it to the given session."
+  (let ((buffer (shime-make-buffer session name)))
+    (shime-attach-buffer-to-session session buffer)
+    buffer))
+
+(defun shime-get-buffer-ghci-process ()
+  "Get the GHCi process of the current buffer."
+  (if (and (default-boundp 'shime-ghci-process-of-buffer)
+           shime-ghci-process-of-buffer
+           (assoc shime-ghci-process-of-buffer shime-processes))
+      shime-ghci-process-of-buffer
+    (progn (setq shime-ghci-process-of-buffer nil)
+           (make-local-variable 'shime-ghci-process-of-buffer)
+           (shime-choose-buffer-ghci-process-or-default))))
+
+(defun shime-get-buffer-cabal-process ()
+  "Get the Cabal process of the current buffer."
+  (if (and (default-boundp 'shime-cabal-process-of-buffer)
+           shime-cabal-process-of-buffer
+           (assoc shime-cabal-process-of-buffer shime-processes))
+      shime-cabal-process-of-buffer
+    (progn (setq shime-cabal-process-of-buffer nil)
+           (make-local-variable 'shime-cabal-process-of-buffer)
+           (shime-choose-buffer-cabal-process-or-default))))
+
+(defun shime-get-buffer-session ()
+  "Get the session of the current buffer."
+  (if (and (default-boundp 'shime-session-of-buffer)
+           shime-session-of-buffer
+           (assoc shime-session-of-buffer shime-sessions))
+      shime-session-of-buffer
+    (progn (setq shime-session-of-buffer nil)
+           (make-local-variable 'shime-session-of-buffer)
+           (shime-choose-buffer-session-or-default))))
 
 (defun shime-maybe-start-session ()
   "Maybe start a new session."
@@ -435,22 +661,36 @@
 (defun* shime-start-session (&key name (config (make-shime-config)))
   "Start a normal session."
   (let* ((session (shime-make-session name config))
-         (ghci-process (shime-make-ghci-process session
-                                                (concat name "-ghci")
-                                                shime-default-ghci-path
-                                                config))
-         (cabal-process (shime-make-cabal-process session
-                                                  (concat name "-cabal")
-                                                  shime-default-shell-path
-                                                  config))
-         (buffer (shime-make-buffer session (concat "*" name "*"))))
+         (buffer (shime-start-new-buffer session (shime-new-buffer-name session))))
+    (shime-start-new-ghci-process session
+                                  (shime-new-process-name session "ghci")
+                                  buffer)
+    (shime-start-new-cabal-process session
+                                   (shime-new-process-name session "cabal")
+                                   buffer)
     (setf (shime-session-active-p session) t)
-    (shime-attach-process-to-session session ghci-process)
-    (shime-attach-process-to-session session cabal-process)
-    (shime-attach-buffer-to-session session buffer)
-    (shime-attach-process-to-buffer ghci-process buffer)
-    (shime-attach-process-to-buffer cabal-process buffer)
     session))
+
+(defun shime-new-buffer-name (session)
+  "Generate a unique buffer name to be used in a session."
+  ;; FIXME: Make sure it's actually unique, better algo. Most
+  ;; cases it will be okay for now.
+  (if (null (shime-session-buffers session))
+      (concat "*" (shime-session-name session) "*")
+    (concat "*" (shime-session-name session)
+            "-" (number-to-string (length (shime-session-buffers session)))
+            "*")))
+
+(defun shime-new-process-name (session prefix)
+  "Generate a unique process name to be used in a session."
+  ;; TODO: Elsewhere ensure that a process cannot be attached to
+  ;; a session if that name already exists. Doesn't make sense.
+  ;; FIXME: Make sure it's actually unique when generating
+  ;; it. Most cases it will be okay for now.
+  (if (null (shime-session-processes session))
+      (concat (shime-session-name session) "-" prefix)
+    (concat (shime-session-name session) "-" prefix "-"
+            (number-to-string (1- (length (shime-session-processes session)))))))
 
 (defun shime-attach-process-to-buffer (process buffer)
   "Bidirectionally attach a process to a buffer."
@@ -504,6 +744,11 @@
 
 ;; Cabal procedures
 
+(defun shime-session-cabal-processes (session)
+  (remove-if (lambda (process)
+               (not (eq (shime-process-type process) 'cabal)))
+             (shime-session-processes session)))
+
 (defun shime-make-cabal-process (session name program-path config)
   "Make a Cabal process."
   (shime-make-process
@@ -512,7 +757,8 @@
    program-path
    #'shime-cabal-filter
    #'shime-cabal-sentinel
-   'cabal))
+   'cabal
+   nil))
 
 (defun shime-cabal-filter (process. input)
   "The process filter for GHCi processes."
@@ -524,28 +770,27 @@
 (defun shime-cabal-sentinel (process event)
   "Sentinel for Cabal processes.")
 
-(defun shime-buffer-cabal-command (buffer expr)
-  "Send an expression to the (first) Cabal process associated with this buffer."
-  (let ((process (find-if (lambda (process)
-                            (equal 'cabal (shime-process-type process)))
-                          (shime-buffer-processes buffer))))
-    (shime-buffer-echo buffer "\n")
-    (shime-cabal-send-expression process expr)))
-
-(defun shime-cabal-send-expression (process expr)
+(defun shime-cabal-send-cmd (process cmd)
   "Send an expression."
   (process-send-string (shime-process-process process)
-                       (concat expr "\n")))
+                       (concat
+                        shime-cabal-program-path
+                        " "
+                        cmd "\n"
+                        ;; TODO: Something better than this.
+                        "echo \"Cabal command finished.\"\n")))
+
+(defun shime-cabal-send-line (process line)
+  "Send an expression."
+  (process-send-string (shime-process-process process)
+                       (concat line "\n")))
 
 ;; GHCi procedures
 
-(defun shime-ghci-send-expression-dwim (expr)
-  "Send an expression to a GHCi process, just do what I mean."
-  (let ((buffer (assoc (concat "*" shime-default-session-name "*") shime-buffers)))
-    (if buffer
-        (shime-buffer-ghci-send-expression (cdr buffer) expr)
-      (progn (shime)
-             (shime-ghci-send-expression-dwim expr)))))
+(defun shime-session-ghci-processes (session)
+  (remove-if (lambda (process)
+               (not (eq (shime-process-type process) 'ghci)))
+             (shime-session-processes session)))
 
 (defun shime-ghci-send-expression (process expr)
   "Send an expression."
@@ -559,15 +804,13 @@
    program-path
    #'shime-ghci-filter
    #'shime-ghci-sentinel
-   'ghci))
+   'ghci
+   nil))
 
-(defun shime-buffer-ghci-send-expression (buffer expr)
+(defun shime-buffer-ghci-send-expression (buffer process expr)
   "Send an expression to the (first) GHCi process associated with this buffer."
-  (let ((process (find-if (lambda (process)
-                            (equal 'ghci (shime-process-type process)))
-                          (shime-buffer-processes buffer))))
-    (shime-buffer-echo buffer "\n")
-    (shime-ghci-send-expression process expr)))
+  (shime-buffer-echo buffer "\n")
+  (shime-ghci-send-expression process expr))
 
 (defun shime-ghci-filter (process. input)
   "The process filter for GHCi processes."
@@ -661,38 +904,50 @@
                                     name)
                            name))))
 
-(defun shime-set-project-root (root)
-  (setq shime-project-root root)
-  (shime-cabal-shell-dwim (concat "cd " root)))
+(defun shime-set-load-root (process root)
+  (setf (shime-process-pwd process) root)
+  (shime-buffer-ghci-send-expression
+   (shime-process-buffer process)
+   process
+   (concat ":cd " root)))
 
-(defun shime-set-load-root (root)
-  (setq shime-load-root root)
-  (shime-ghci-send-expression-dwim (concat ":cd " root)))
-
-(defun shime-prompt-load-root (def)
+(defun shime-prompt-load-root (process def)
   (interactive)
-  "Prompt to set the root path with a default vaule."
-  (shime-set-load-root (read-from-minibuffer (shime-string 'shime-new-load-root)
-                                             def)))
+  "Prompt to set the root path with a default value."
+  (shime-set-load-root
+   process
+   (read-from-minibuffer (shime-string 'new-load-root)
+                         def)))
 
-(defun shime-prompt-project-root (def)
+(defun shime-set-cabal-root (process root)
+  (setf (shime-process-pwd process) root)
+  (shime-cabal-send-line
+   process
+   (concat "cd " root)))
+
+(defun shime-prompt-cabal-root (process def)
   (interactive)
-  "Prompt to set the root path with a default vaule."
-  (shime-set-project-root (read-from-minibuffer (shime-string 'shime-new-project-root)
-                                                def)))
+  "Prompt to set the root Cabal path with a default value."
+  (shime-set-cabal-root
+   process
+   (read-from-minibuffer (shime-string 'new-cabal-root)
+                         def)))
 
 (defun shime-ask-change-root ()
-  (y-or-n-p (shime-string 'shime-ask-change-root)))
+  (y-or-n-p (shime-string 'ask-change-root)))
 
-(defun shime-load-file-relative ()
+(defun shime-load-file-relative (process)
   "Load a file relative to the current root."
-  (cond ((string= (shime-strip-/ shime-load-root) (shime-strip-/ (shime-buffer-directory)))
+  (cond ((string= (shime-strip-/ (shime-process-pwd process))
+                  (shime-strip-/ (shime-buffer-directory)))
          (shime-buffer-filename))
-        ((shime-relative-to shime-load-root (shime-buffer-directory))
+        ((shime-relative-to (shime-process-pwd process)
+                            (shime-buffer-directory))
          (shime-/
-          (shime-strings-suffix (shime-buffer-directory)
-                                (concat (shime-strip-/ shime-load-root)
-                                        "/"))
+          (shime-strings-suffix
+           (shime-buffer-directory)
+           (concat (shime-strip-/ (shime-process-pwd process))
+                   "/"))
           (shime-buffer-filename)))))
 
 (defun shime-relative-to (a b)
