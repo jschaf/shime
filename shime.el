@@ -99,6 +99,8 @@
         (kill-process . "Kill Shime process: ")
         (kill-buffer . "Kill Shime buffer: ")
         (start-shime . "Start Shime? ")
+        (buffer-no-processes . "No processes attached to this buffer!")
+        (choose-buffer-process . "Choose buffer process: ")
         (ask-change-root . "Do you want to change the root directory? ")
         (new-load-root . "New load root: ")
         (new-cabal-root . "New Cabal root: ")
@@ -235,11 +237,12 @@
   (shime-buffer
    (:constructor
     make-shime-buffer
-    (&key name buffer session processes)))
+    (&key name buffer session processes ghci-process)))
   name
   buffer
   session
-  processes)
+  processes
+  ghci-process)
 
 (defun shime-make-session (name config)
   "Make a Session object."
@@ -288,7 +291,8 @@
                    :name name
                    :buffer (get-buffer-create name)
                    :session session
-                   :processes '())))
+                   :processes '()
+                   :ghci-process nil)))
       (add-to-list 'shime-buffers (cons name buffer))
       (with-current-buffer (shime-buffer-buffer buffer)
         (kill-all-local-variables)
@@ -351,7 +355,7 @@
   "Prompt to set the root Cabal path (defaults to current directory)."
   (shime-with-buffer-ghci-process
    process
-   (shime-prompt-cabal-root process shime-cabal-root)))
+   (shime-prompt-cabal-root process """")))
 
 (defun shime-cabal-configure ()
   "Run the Cabal configure command."
@@ -509,10 +513,14 @@
     (when input
       (let ((buffer (assoc (buffer-name) shime-buffers)))
         (when buffer
-          ;; TODO: Come up with a nice way for processes to hook
-          ;; into inputs, making this generic.
-          (shime-buffer-ghci-send-expression (cdr buffer)
-                                             (match-string 1 line)))))))
+          (let ((process (shime-get-shime-buffer-ghci-process (cdr buffer))))
+            (when process
+              (shime-buffer-ghci-send-expression
+               (cdr buffer) process (match-string 1 line)))))))))
+
+;; (when buffer
+;;   (shime-buffer-ghci-send-expression (cdr buffer)
+;;                                      (match-string 1 line)))))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -582,6 +590,30 @@
                    ,body)))))))
 
 ;; Procedures
+
+(defun shime-get-shime-buffer-ghci-process (buffer)
+  (let ((process (shime-buffer-ghci-process buffer)))
+    (if process
+        process
+      (if (null (shime-buffer-processes buffer))
+          (progn (message (shime-string 'buffer-no-processes))
+                 nil)
+        (let ((ghci-processes
+               (remove-if (lambda (process)
+                            (not (eq (shime-process-type process)
+                                     'ghci)))
+                          (shime-buffer-processes buffer))))
+          (if (= 1 (length ghci-processes))
+              (progn (setf (shime-buffer-ghci-process buffer) (car ghci-processes))
+                     (car ghci-processes))
+            (let ((process-name (ido-completing-read
+                                 (shime-string 'choose-buffer-process)
+                                 (mapcar 'shime-process-name ghci-processes))))
+              (let ((process (assoc process-name shime-processes)))
+                (if process
+                    (progn (setf (shime-buffer-ghci-process buffer) (cdr process))
+                           (cdr process))
+                  (shime-get-shime-buffer-ghci-process buffer))))))))))
 
 (defun shime-choose-session ()
   "Ask the user to choose from the list of sessions."
