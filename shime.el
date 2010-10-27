@@ -501,6 +501,13 @@
        (progn (shime-set-load-root process (shime-buffer-directory))
               (shime-load-file))))))
 
+(defun shime-reset-everything-because-it-broke ()
+  "Reset everything because it broke."
+  (interactive)
+  (setq shime-sessions nil)
+  (setq shime-buffers nil)
+  (setq shime-processes nil))
+
 ;; Key binding handlers
 
 (defun shime-key-ret ()
@@ -517,13 +524,6 @@
             (when process
               (shime-buffer-ghci-send-expression
                (cdr buffer) process (match-string 1 line)))))))))
-
-(defun shime-reset-everything-because-it-broke ()
-  "Reset everything because it broke."
-  (interactive)
-  (setq shime-sessions nil)
-  (setq shime-buffers nil)
-  (setq shime-processes nil))
 
 ;; Macros
 
