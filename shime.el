@@ -47,6 +47,7 @@
     (define-key map (kbd "C-j") 'shime-key-ret)
     (define-key map (kbd "M-p") 'shime-key-history-prev)
     (define-key map (kbd "M-n") 'shime-key-history-next)
+    (define-key map (kbd "C-a") 'shime-key-home)
     map)
   "Shime mode map.")
 
@@ -511,6 +512,15 @@
   (setq shime-processes nil))
 
 ;; Key binding handlers
+
+(defun shime-key-home ()
+  "Handle the home key press."
+  (interactive)
+  (goto-char (line-beginning-position))
+  (search-forward-regexp shime-ghci-prompt-regex
+                         (line-end-position)
+                         t
+                         1))
 
 (defun shime-key-ret ()
   "Handle the return key press."
