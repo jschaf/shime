@@ -518,10 +518,6 @@
               (shime-buffer-ghci-send-expression
                (cdr buffer) process (match-string 1 line)))))))))
 
-;; (when buffer
-;;   (shime-buffer-ghci-send-expression (cdr buffer)
-;;                                      (match-string 1 line)))))))
-
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
   (interactive)
