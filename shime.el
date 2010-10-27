@@ -45,6 +45,8 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
     (define-key map (kbd "C-j") 'shime-key-ret)
+    (define-key map (kbd "M-p") 'shime-key-history-prev)
+    (define-key map (kbd "M-n") 'shime-key-history-next)
     map)
   "Shime mode map.")
 
@@ -79,7 +81,7 @@
   :group 'shime
   :type 'string)
 
-(defcustom shime-ghci-prompt-regex "^λ> \\(.*\\)"
+(defcustom shime-ghci-prompt-regex "^λ> "
   "Regex to match the prompt string."
   :group 'shime
   :type 'string)
@@ -513,17 +515,37 @@
 (defun shime-key-ret ()
   "Handle the return key press."
   (interactive)
-  (let* ((line (buffer-substring-no-properties
-                (line-beginning-position) 
-                (line-end-position)))
-         (input (string-match shime-ghci-prompt-regex line)))
-    (when input
-      (let ((buffer (assoc (buffer-name) shime-buffers)))
+  (let* ((start (line-beginning-position))
+         (end (line-end-position))
+         (p (save-excursion 
+              (goto-char start)
+              (search-forward-regexp shime-ghci-prompt-regex
+                                     end
+                                     t
+                                     1))))
+    (when p
+      (let ((line (buffer-substring-no-properties p end))
+            (buffer (assoc (buffer-name) shime-buffers)))
         (when buffer
           (let ((process (shime-get-shime-buffer-ghci-process (cdr buffer))))
             (when process
+              (shime-history-ensure-created)
+              (unless (string= "" line)
+                (setq shime-history-of-buffer
+                      (cons line shime-history-of-buffer))
+                (setq shime-history-index-of-buffer -1))
               (shime-buffer-ghci-send-expression
-               (cdr buffer) process (match-string 1 line)))))))))
+               (cdr buffer) process line))))))))
+
+(defun shime-key-history-prev ()
+  "Show previous history item."
+  (interactive)
+  (shime-history-toggle 1))
+
+(defun shime-key-history-next ()
+  "Show previous history item."
+  (interactive)
+  (shime-history-toggle -1))
 
 ;; Macros
 
@@ -586,6 +608,44 @@
                    ,body)))))))
 
 ;; Procedures
+
+(defun shime-history-ensure-created ()
+  "Ensure the local variable for history is created."
+  (unless (default-boundp 'shime-history-of-buffer)
+    (setq shime-history-of-buffer '(""))
+    (setq shime-history-index-of-buffer 0)
+    (make-local-variable 'shime-history-of-buffer)
+    (make-local-variable 'shime-history-index-of-buffer)))
+
+(defun shime-history-toggle (direction)
+  "Toggle the prompt contents by cycling the history."
+  (shime-history-ensure-created)
+  (setq shime-history-index-of-buffer
+        (+ shime-history-index-of-buffer
+           direction))
+  (shime-buffer-clear-prompt)
+  (insert (nth (mod shime-history-index-of-buffer
+                    (length shime-history-of-buffer))
+               shime-history-of-buffer)))
+
+(defun shime-buffer-clear-prompt ()
+  "Clear the current prompt."
+  ;; TODO: Maybe check that we're in an actual Shime buffer, in
+  ;; case a maurading fool enters and splashes water over
+  ;; everyone's dogs.
+  (goto-char (point-max))
+  (let ((start (line-beginning-position))
+        (end (line-end-position)))
+    (goto-char start)
+    (let* ((p (search-forward-regexp shime-ghci-prompt-regex
+                                     end
+                                     t
+                                     1)))
+      (when p
+        ;; TODO: I don't like this so much, not like a clear
+        ;; spring in a Yorkshire morning, but it actually seems
+        ;; sufficient.
+        (delete-region p end)))))
 
 (defun shime-get-shime-buffer-ghci-process (buffer)
   (let ((process (shime-buffer-ghci-process buffer)))
