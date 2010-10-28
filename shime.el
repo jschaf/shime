@@ -296,23 +296,30 @@ unchanged."
   (make-shime-config :name name
                      :cabal-load-path cabal-load-path))
 
+(defun shime-start-process-for-shime-process (process)
+  "Start a process using the details given in the shime-process
+object and attach itself to it."
+  (let* ((process-connection-type nil)
+         (path (shime-executable-find (shime-process-program-path process)))
+         (process-ref (start-process (shime-process-name process) nil path)))
+    (set-process-filter process-ref (shime-process-filter process))
+    (set-process-sentinel process-ref (shime-process-sentinel process))
+    (setf (shime-process-process process) process-ref)))
+
 (defun shime-make-process (session name program-path filter sentinel type pwd)
   "Make a Shime process object."
-  (let ((process-connection-type nil))
-    (let ((process-ref (start-process name nil (shime-executable-find program-path))))
-      (set-process-filter process-ref filter)
-      (set-process-sentinel process-ref sentinel)
-      (let ((process (make-shime-process
-                      :program-path program-path
-                      :name name
-                      :session session
-                      :filter filter
-                      :sentinel sentinel
-                      :process process-ref
-                      :type type
-                      :pwd pwd)))
-        (add-to-list 'shime-processes (cons name process))
-        process))))
+  (let ((process (make-shime-process
+                  :program-path program-path
+                  :name name
+                  :session session
+                  :filter filter
+                  :sentinel sentinel
+                  :process nil
+                  :type type
+                  :pwd pwd)))
+    (shime-start-process-for-shime-process process)
+    (add-to-list 'shime-processes (cons name process))
+    process))
 
 (defun shime-make-buffer (session name)
   "Make a Shime buffer object associated with a session."
