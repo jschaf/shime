@@ -121,6 +121,7 @@
         (new-load-root . "New load root: ")
         (new-cabal-root . "New Cabal root: ")
         (choose-session . "Choose session: ")
+        (cabal-command-finished . "Cabal command finished.")
         (choose-buffer-ghci-process . "Choose GHCi process: ")
         (needed-a-session . "The command needed a Shime session. Aborted.")
         (buffer-session-was-set
@@ -400,6 +401,20 @@ unchanged."
   "Run the Cabal build command."
   (interactive)
   (shime-cabal-command "build"))
+
+(defun shime-cabal-build-and-copy ()
+  "Run the Cabal build command, and copy the build .o and .hi
+files to the source dir. Duncan Coutts tells me that this is
+risky in the case of more complex build setups, and I acknowledge
+that. However, for my simple builds, it speeds up loading in GHCi
+from ten seconds to instant. Should come up with something
+better, i.e. provided by Cabal, later."
+  (interactive)
+  (shime-with-buffer-ghci-process
+   process
+   (shime-cabal-command
+    (concat "build &&"
+            "cp -R dist/build/*/*-tmp/* " (shime-process-pwd process)))))
 
 (defun shime-cabal-clean ()
   "Run the Cabal clean command."
@@ -909,7 +924,7 @@ unchanged."
                         " "
                         cmd "\n"
                         ;; TODO: Something better than this.
-                        "echo \"Cabal command finished.\"\n")))
+                        "echo \"" (shime-string 'cabal-command-finished) "\"\n")))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
