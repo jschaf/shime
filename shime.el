@@ -506,7 +506,7 @@ unchanged."
          (shime-cabal-send-cmd process cmd)
        (progn (shime-prompt-cabal-root
                process
-               (shime-buffer-directory))
+               (file-name-directory (buffer-file-name)))
               (shime-cabal-command cmd))))))
 
 (defun shime-load-file ()
@@ -518,22 +518,13 @@ unchanged."
    (progn
      (save-buffer)
      (if (shime-process-pwd process)
-         (let ((path (cond ((shime-relative-to
-                             (shime-process-pwd process)
-                             (shime-buffer-directory))
-                            (shime-load-file-relative process))
-                           ((shime-ask-change-root)
-                            (shime-prompt-load-root process
-                                                    (shime-buffer-directory))
-                            (shime-/ (shime-process-pwd process)
-                                     (shime-buffer-filename)))
-                           (t (buffer-file-name)))))
-           (shime-buffer-ghci-send-expression
-            (shime-process-buffer process)
-            process
-            (concat ":load " path)))
-       (progn (shime-set-load-root process (shime-buffer-directory))
-              (shime-load-file))))))
+	 (shime-buffer-ghci-send-expression
+	  (shime-process-buffer process)
+	  process
+	  (concat ":load " (buffer-file-name)))
+       (progn (shime-set-load-root process (file-name-directory
+					    (buffer-file-name)))
+	      (shime-load-file))))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -1070,69 +1061,6 @@ unchanged."
 
 (defun shime-ask-change-root ()
   (y-or-n-p (shime-string 'ask-change-root)))
-
-(defun shime-load-file-relative (process)
-  "Load a file relative to the current root."
-  (cond ((string= (shime-strip-/ (shime-process-pwd process))
-                  (shime-strip-/ (shime-buffer-directory)))
-         (shime-buffer-filename))
-        ((shime-relative-to (shime-process-pwd process)
-                            (shime-buffer-directory))
-         (shime-/
-          (shime-strings-suffix
-           (shime-buffer-directory)
-           (concat (shime-strip-/ (shime-process-pwd process))
-                   "/"))
-          (shime-buffer-filename)))))
-
-(defun shime-relative-to (a b)
-  "Is a path b relative to path a?"
-  (shime-is-prefix-of (shime-strip-/ a) (shime-strip-/ b)))
-
-(defun shime-strip-/ (a)
-  "Strip trailing slashes."
-  (replace-regexp-in-string "[/\\\\]+$" "" a))
-
-(defun shime-/ (a b)
-  "Append two paths."
-  (concat (shime-strip-/ a)
-          "/"
-          (replace-regexp-in-string "^[/\\\\]+" "" b)))
-
-(defun shime-strings-suffix (a b)
-  "Return the suffix of of the longer of two strings."
-  (substring (if (> (length a) (length b)) a b)
-             (min (length a) (length b))
-             (max (length a) (length b))))
-
-(defun shime-is-prefix-of (a b)
-  "Is one string a prefix of another?"
-  (and (<= (length a) (length b))
-       (string= (substring b 0 (length a)) a)))
-
-(defun shime-buffer-filename ()
-  "Get the filename of the buffer."
-  (shime-path-filename (buffer-file-name)))
-
-(defun shime-buffer-directory ()
-  "Get the directory of the buffer."
-  (shime-path-directory (buffer-file-name)))
-
-(defun shime-path-filename (path)
-  "Get the filename part of a path."
-  (car (last (shime-split-path path))))
-
-;; Haven't seen an Elisp function that does this.
-(defun shime-path-directory (path)
-  "Get the directory part of a path."
-  (if (file-directory-p path)
-      path
-    ;; I think `/' works fine on Windows.
-    (reduce #'shime-/ (butlast (shime-split-path path)))))
-
-(defun shime-split-path (path)
-  "Split a filename into path segments."
-  (split-string path "[/\\\\]"))
 
 (provide 'shime)
 
