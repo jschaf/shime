@@ -6,6 +6,9 @@ Here is my setup:
 
     (add-to-list 'load-path "~/Emacs/me/shime")
     (require 'shime)
+    (define-key haskell-mode-map [f5] 'shime-load-file)
+    (define-key haskell-mode-map (kbd "C-c C-c") 'shime-cabal-build)
+    (define-key haskell-mode-map (kbd "C-c c") 'shime-cabal-ido)
 
 Something like:
 
@@ -24,8 +27,6 @@ processes, so just killing a buffer doesn't make much sense
 unless I add a "master buffer" concept in future versions.
 
 ## Loading files
-
-    (define-key haskell-mode-map [f5] 'shime-load-file)
 
 Shime has one project root (right now). By default it uses the
 directory of the first file loaded. All files loaded under that
