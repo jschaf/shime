@@ -989,10 +989,10 @@ better, i.e. provided by Cabal, later."
       (unless (or (null parsed-lines)
                   (string= (shime-process-data process) ""))
         (shime-delete-line))
-      (mapcar (lambda (line)
+      (mapc (lambda (line)
                 (shime-buffer-echo buffer (concat line "\n")))
               parsed-lines)
-      (when remaining-input
+      (when (not (string= remaining-input ""))
         (shime-delete-line)
         (shime-buffer-echo buffer (concat remaining-input)))
       (if (string-match shime-ghci-prompt-regex remaining-input)
