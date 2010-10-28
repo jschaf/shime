@@ -515,16 +515,21 @@ unchanged."
   (interactive)
   (shime-with-buffer-ghci-process
    process
-   (progn
+   (let* ((file (buffer-file-name))
+	  (file-dir (file-name-directory file)))
      (save-buffer)
      (if (shime-process-pwd process)
-	 (shime-buffer-ghci-send-expression
-	  (shime-process-buffer process)
-	  process
-	  (concat ":load " (buffer-file-name)))
-       (progn (shime-set-load-root process (file-name-directory
-					    (buffer-file-name)))
-	      (shime-load-file))))))
+	 (progn
+	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
+	     (shime-ask-change-root)
+	     (shime-prompt-load-root process file-dir))
+	   (shime-buffer-ghci-send-expression
+	    (shime-process-buffer process)
+	    process
+	    (concat ":load " file)))
+       (shime-set-load-root process file-dir)
+       (shime-load-file)
+       ))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -1061,6 +1066,17 @@ unchanged."
 
 (defun shime-ask-change-root ()
   (y-or-n-p (shime-string 'ask-change-root)))
+
+(defun shime-relative-to (a b)
+  "Is a path b relative to path a?"
+  (message "a-b %s %s" a b)
+  (shime-is-prefix-of (directory-file-name a)
+		      (directory-file-name b)))
+
+(defun shime-is-prefix-of (a b)
+  "Is one string a prefix of another?"
+  (and (<= (length a) (length b))
+       (string= (substring b 0 (length a)) a)))
 
 (provide 'shime)
 
