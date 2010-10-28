@@ -198,7 +198,7 @@ unchanged."
       (narrow-to-region (re-search-forward "Commands:\n")
 			(re-search-forward "^\n"))
       (goto-char (point-min))
-  
+
       (let (cmds)
 	(while (re-search-forward "^  \\([a-z]+\\)" nil t)
 	  (push (match-string 1) cmds))
@@ -280,7 +280,7 @@ unchanged."
 (defun shime-make-session (name config)
   "Make a Session object."
   (let ((session (make-shime-session
-                  :config config 
+                  :config config
                   :name name
                   :processes '()
                   :buffers '()
@@ -301,7 +301,7 @@ unchanged."
     (let ((process-ref (start-process name nil (shime-executable-find program-path))))
       (set-process-filter process-ref filter)
       (set-process-sentinel process-ref sentinel)
-      (let ((process (make-shime-process 
+      (let ((process (make-shime-process
                       :program-path program-path
                       :name name
                       :session session
@@ -434,7 +434,7 @@ unchanged."
   "Choose the session for this buffer."
   (interactive)
   (shime-with-any-session
-   (setq shime-session-of-buffer 
+   (setq shime-session-of-buffer
          (ido-completing-read (shime-string 'choose-buffer-session)
                               (mapcar 'car shime-sessions))))
   (message (funcall (shime-string 'buffer-session-was-set) shime-session-of-buffer))
@@ -443,7 +443,7 @@ unchanged."
 (defun shime-choose-buffer-ghci-process-or-default ()
   "Choose the buffer for this buffer or just default if there's only one buffer."
   (interactive)
-  (shime-with-session 
+  (shime-with-session
    session
    (if (= (length (shime-session-ghci-processes session)) 1)
        (progn (setq shime-ghci-process-of-buffer
@@ -460,7 +460,7 @@ unchanged."
   (interactive)
   (shime-with-session
    session
-   (setq shime-ghci-process-of-buffer 
+   (setq shime-ghci-process-of-buffer
          (ido-completing-read (shime-string 'choose-buffer-ghci-process)
                               (mapcar 'shime-process-name
                                       (shime-session-ghci-processes session)))))
@@ -488,7 +488,7 @@ unchanged."
   (interactive)
   (shime-with-session
    session
-   (setq shime-cabal-process-of-buffer 
+   (setq shime-cabal-process-of-buffer
          (ido-completing-read (shime-string 'choose-buffer-cabal-process)
                               (mapcar 'shime-process-name
                                       (shime-session-cabal-processes session)))))
@@ -549,7 +549,7 @@ unchanged."
   (interactive)
   (let* ((start (line-beginning-position))
          (end (line-end-position))
-         (p (save-excursion 
+         (p (save-excursion
               (goto-char start)
               (search-forward-regexp shime-ghci-prompt-regex
                                      end
