@@ -1027,10 +1027,10 @@ better, i.e. provided by Cabal, later."
   "Kill a Shime session and all associated buffers and processes."
   (let ((session (assoc name shime-sessions)))
     (when session
-      (mapcar (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
-              (shime-session-buffers (cdr session)))
-      (mapcar (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
-              (shime-session-processes (cdr session)))
+      (mapc (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
+	    (shime-session-buffers (cdr session)))
+      (mapc (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
+	    (shime-session-processes (cdr session)))
       (setf (shime-session-active-p (cdr session)) nil)
       (setq shime-sessions
             (delete-if (lambda (keyvalue)
