@@ -37,9 +37,16 @@
 ;; IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 ;; THE POSSIBILITY OF SUCH DAMAGE.
 ;;
-;;; Code:
+;; Installation
+;;
+;; - Place `shime.el' in your emacs load path.
+;; - Add the following line to your .emacs file:
+;;   (autoload 'shime "shime" nil t)
+;;
+;; To customize shime:
+;;  M-x customize-group RET shime RET
 
-;; Mode definition
+;;; Code:
 
 (eval-when-compile
   (require 'cl))
