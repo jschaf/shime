@@ -536,15 +536,14 @@ better, i.e. provided by Cabal, later."
      (if (shime-process-pwd process)
 	 (progn
 	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
-	     (shime-ask-change-root)
-	     (shime-prompt-load-root process file-dir))
+	     (when (shime-ask-change-root)
+               (shime-prompt-load-root process file-dir)))
 	   (shime-buffer-ghci-send-expression
 	    (shime-process-buffer process)
 	    process
 	    (concat ":load " file)))
        (shime-set-load-root process file-dir)
-       (shime-load-file)
-       ))))
+       (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
