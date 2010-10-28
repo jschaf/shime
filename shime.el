@@ -377,7 +377,7 @@ unchanged."
   "Prompt to set the root Cabal path (defaults to current directory)."
   (shime-with-buffer-ghci-process
    process
-   (shime-prompt-cabal-root process """")))
+   (shime-prompt-cabal-root process "")))
 
 (defun shime-cabal-configure ()
   "Run the Cabal configure command."
