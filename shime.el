@@ -330,6 +330,7 @@ unchanged."
 
 ;; Interactive procedures
 
+;;;###autoload
 (defun shime ()
   "Start a Shime session."
   (interactive)
