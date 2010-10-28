@@ -260,7 +260,8 @@ unchanged."
           process
           buffer
           type
-          pwd)))
+          pwd
+          data)))
   program-path
   name
   session
@@ -269,7 +270,8 @@ unchanged."
   process
   buffer
   type
-  pwd)
+  pwd
+  data)
 
 (defstruct
   (shime-buffer
@@ -320,7 +322,8 @@ object and attach itself to it."
                   :sentinel sentinel
                   :process nil
                   :type type
-                  :pwd pwd)))
+                  :pwd pwd
+                  :data "")))
     (shime-start-process-for-shime-process process)
     (add-to-list 'shime-processes (cons name process))
     process))
@@ -976,8 +979,30 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle input from the process on a given session and process."
-  (let ((buffer (shime-process-buffer process)))
-    (shime-buffer-echo buffer input)))
+  (let* ((buffer (shime-process-buffer process))
+         (lines (split-string
+                 (concat (shime-process-data process) input)
+                 "[\r\n]"))
+         (parsed-lines (butlast lines))
+         (remaining-input (car (or (last lines) '("")))))
+    (with-current-buffer (shime-buffer-buffer buffer)
+      (unless (or (null parsed-lines)
+                  (string= (shime-process-data process) ""))
+        (shime-delete-line))
+      (mapcar (lambda (line)
+                (shime-buffer-echo buffer (concat line "\n")))
+              parsed-lines)
+      (when remaining-input
+        (shime-delete-line)
+        (shime-buffer-echo buffer (concat remaining-input)))
+      (if (string-match shime-ghci-prompt-regex remaining-input)
+        (setf (shime-process-data process) "")
+        (setf (shime-process-data process) remaining-input)))))
+
+(defun shime-delete-line ()
+  "Delete the current line."
+  (delete-region (line-beginning-position)
+                 (line-end-position)))
 
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
