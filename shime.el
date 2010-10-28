@@ -1074,7 +1074,7 @@ better, i.e. provided by Cabal, later."
     (goto-char (point-max))
     (with-selected-window (display-buffer (shime-buffer-buffer buffer) nil 'visible)
       (insert str)
-      (end-of-buffer))))
+      (goto-char (point-max)))))
 
 ;; Functions
 
