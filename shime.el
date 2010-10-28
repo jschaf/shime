@@ -47,6 +47,7 @@
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
+    (define-key map (kbd "DEL") 'shime-key-del)
     (define-key map (kbd "C-j") 'shime-key-ret)
     (define-key map (kbd "M-p") 'shime-key-history-prev)
     (define-key map (kbd "M-n") 'shime-key-history-next)
@@ -568,6 +569,12 @@ unchanged."
                 (setq shime-history-index-of-buffer -1))
               (shime-buffer-ghci-send-expression
                (cdr buffer) process line))))))))
+
+(defun shime-key-del ()
+  "Handle the backspace key press."
+  (interactive)
+  (unless (looking-back shime-ghci-prompt-regex (line-beginning-position))
+    (backward-delete-char 1)))
 
 (defun shime-key-history-prev ()
   "Show previous history item."
