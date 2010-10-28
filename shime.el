@@ -393,15 +393,15 @@ object and attach itself to it."
                         (mapcar 'car shime-processes))))
 
 (defun shime-choose-load-root ()
-  (interactive)
   "Prompt to set the root load path (defaults to current directory)."
+  (interactive)
   (shime-with-buffer-ghci-process
    process
    (shime-prompt-load-root process shime-load-root)))
 
 (defun shime-choose-cabal-root ()
-  (interactive)
   "Prompt to set the root Cabal path (defaults to current directory)."
+  (interactive)
   (shime-with-buffer-ghci-process
    process
    (shime-prompt-cabal-root process "")))
@@ -1109,8 +1109,8 @@ better, i.e. provided by Cabal, later."
    (concat ":cd " root)))
 
 (defun shime-prompt-load-root (process def)
-  (interactive)
   "Prompt to set the root path with a default value."
+  (interactive)
   (shime-set-load-root
    process
    (read-from-minibuffer (shime-string 'new-load-root)
@@ -1123,8 +1123,8 @@ better, i.e. provided by Cabal, later."
    (concat "cd " root)))
 
 (defun shime-prompt-cabal-root (process def)
-  (interactive)
   "Prompt to set the root Cabal path with a default value."
+  (interactive)
   (shime-set-cabal-root
    process
    (read-from-minibuffer (shime-string 'new-cabal-root)
