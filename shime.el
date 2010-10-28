@@ -895,7 +895,7 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-detach-buffer-from-session (buffer session)
   "Bidirectionally detach a buffer from a session."
-  (mapcar (lambda (process)
+  (mapc (lambda (process)
             (shime-detach-process-from-buffer process buffer))
           (shime-buffer-processes buffer))
   (setf (shime-session-buffers session)
