@@ -115,6 +115,10 @@
         (kill-process . "Kill Shime process: ")
         (kill-buffer . "Kill Shime buffer: ")
         (start-shime . "Start Shime? ")
+        (ghci-died-restart?
+         . (lambda (name)
+             (concat "The GHCi process \"" name "\" ended. Restart it? ")))
+        (restarting-ghci-process . "Restarting GHCi process...")
         (buffer-no-processes . "No processes attached to this buffer!")
         (choose-buffer-process . "Choose buffer process: ")
         (ask-change-root . "Do you want to change the root directory? ")
@@ -976,7 +980,20 @@ better, i.e. provided by Cabal, later."
     (shime-buffer-echo buffer input)))
 
 (defun shime-ghci-sentinel (process event)
-  "Sentinel for GHCi processes.")
+  "Sentinel for GHCi processes."
+  (cond ((string-match "finished" event)
+         (shime-ghci-handle-finished process))))
+
+(defun shime-ghci-handle-finished (process.)
+  "Handle the event of GHCi dying or just closing."
+  ;; TODO: It's probably worth, later on, adding some hooks to
+  ;; this, one might want to know when GHCi bails and act.
+  (when (y-or-n-p (funcall (shime-string 'ghci-died-restart?)
+                           (process-name process.)))
+    (shime-with-process-session
+     process. process session
+     (progn (message (shime-string 'restarting-ghci-process))
+            (shime-start-process-for-shime-process process)))))
 
 (defun shime-kill-session-by-name (name)
   "Kill a Shime session and all associated buffers and processes."
