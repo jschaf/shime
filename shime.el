@@ -794,8 +794,7 @@ better, i.e. provided by Cabal, later."
   (if (and (default-boundp 'shime-cabal-process-of-buffer)
            (assoc shime-cabal-process-of-buffer shime-processes))
       shime-cabal-process-of-buffer
-    (progn (setq shime-cabal-process-of-buffer nil)
-           (make-local-variable 'shime-cabal-process-of-buffer)
+    (progn (set (make-local-variable 'shime-cabal-process-of-buffer) nil)
            (shime-choose-buffer-cabal-process-or-default))))
 
 (defun shime-get-buffer-session ()
