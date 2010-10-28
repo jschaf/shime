@@ -783,7 +783,6 @@ better, i.e. provided by Cabal, later."
 (defun shime-get-buffer-ghci-process ()
   "Get the GHCi process of the current buffer."
   (if (and (default-boundp 'shime-ghci-process-of-buffer)
-           shime-ghci-process-of-buffer
            (assoc shime-ghci-process-of-buffer shime-processes))
       shime-ghci-process-of-buffer
     (progn (setq shime-ghci-process-of-buffer nil)
@@ -793,7 +792,6 @@ better, i.e. provided by Cabal, later."
 (defun shime-get-buffer-cabal-process ()
   "Get the Cabal process of the current buffer."
   (if (and (default-boundp 'shime-cabal-process-of-buffer)
-           shime-cabal-process-of-buffer
            (assoc shime-cabal-process-of-buffer shime-processes))
       shime-cabal-process-of-buffer
     (progn (setq shime-cabal-process-of-buffer nil)
@@ -803,7 +801,6 @@ better, i.e. provided by Cabal, later."
 (defun shime-get-buffer-session ()
   "Get the session of the current buffer."
   (if (and (default-boundp 'shime-session-of-buffer)
-           shime-session-of-buffer
            (assoc shime-session-of-buffer shime-sessions))
       shime-session-of-buffer
     (progn (setq shime-session-of-buffer nil)
