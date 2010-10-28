@@ -587,20 +587,27 @@ better, i.e. provided by Cabal, later."
               (search-forward-regexp shime-ghci-prompt-regex
                                      end
                                      t
-                                     1))))
-    (when p
-      (let ((line (buffer-substring-no-properties p end))
-            (buffer (assoc (buffer-name) shime-buffers)))
-        (when buffer
-          (let ((process (shime-get-shime-buffer-ghci-process (cdr buffer))))
-            (when process
-              (shime-history-ensure-created)
-              (unless (string= "" line)
-                (setq shime-history-of-buffer
-                      (cons line shime-history-of-buffer))
-                (setq shime-history-index-of-buffer -1))
-              (shime-buffer-ghci-send-expression
-               (cdr buffer) process line))))))))
+                                     1)))
+         (buffer (assoc (buffer-name) shime-buffers)))
+    (when buffer
+      (let ((process (shime-get-shime-buffer-ghci-process (cdr buffer))))
+        (when process
+          (if p
+              (let ((line (buffer-substring-no-properties p end)))
+                (shime-history-ensure-created)
+                (unless (string= "" line)
+                  (setq shime-history-of-buffer
+                        (cons line shime-history-of-buffer))
+                  (setq shime-history-index-of-buffer -1))
+                (shime-buffer-ghci-send-expression
+                 (cdr buffer) process line))
+            ;; If we're not at a prompt, send an empty line to
+            ;; the REPL, this'll trigger it sending a new prompt,
+            ;; which is probably what we want. At least in the
+            ;; case of M-x erase buffer.
+            ;; TODO: take another look at this to re-evaluate.
+            (shime-buffer-ghci-send-expression
+                 (cdr buffer) process "")))))))
 
 (defun shime-key-del ()
   "Handle the backspace key press."
