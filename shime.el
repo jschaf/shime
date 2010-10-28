@@ -121,6 +121,7 @@
         (new-load-root . "New load root: ")
         (new-cabal-root . "New Cabal root: ")
         (choose-session . "Choose session: ")
+        (cabal-command-finished . "Cabal command finished.")
         (choose-buffer-ghci-process . "Choose GHCi process: ")
         (needed-a-session . "The command needed a Shime session. Aborted.")
         (buffer-session-was-set
@@ -927,7 +928,7 @@ better, i.e. provided by Cabal, later."
                         " "
                         cmd "\n"
                         ;; TODO: Something better than this.
-                        "echo \"Cabal command finished.\"\n")))
+                        "echo \"" (shime-string 'cabal-command-finished) "\"\n")))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
