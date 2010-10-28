@@ -55,6 +55,8 @@
   (make-local-variable 'shime-mode)
   (setq shime-mode t))
 
+(add-hook 'shime-mode-hook 'shime-set-cabal-commands)
+
 ;; Customization
 
 (defcustom shime-default-ghci-path "ghci"
@@ -150,7 +152,6 @@
  updating an individual language at runtime.")
 (setq shime-languages `(("en" . ,shime-strings-en)))
 
-;; TODO: Get dynamically from Cabal --help
 (defvar shime-cabal-commands
   '("install"
     "update"
@@ -173,6 +174,24 @@
     "register"
     "test"
     "help"))
+
+(defun shime-set-cabal-commands ()
+  "Parse 'cabal --help' and set `shime-cabal-commands'.
+If cabal doesn't exist, `shime-cabal-commands' is left
+unchanged."
+  (with-temp-buffer
+    (insert (shell-command-to-string "cabal --help"))
+    (goto-char (point-min))
+
+    (when (re-search-forward "cabal" nil t 2)
+      (narrow-to-region (re-search-forward "Commands:\n")
+			(re-search-forward "^\n"))
+      (goto-char (point-min))
+  
+      (let (cmds)
+	(while (re-search-forward "^  \\([a-z]+\\)" nil t)
+	  (push (match-string 1) cmds))
+	(when cmds (setq shime-cabal-commands (reverse cmds)))))))
 
 ;; Globals
 
