@@ -261,7 +261,8 @@ unchanged."
           buffer
           type
           pwd
-          data)))
+          data
+          block-data)))
   program-path
   name
   session
@@ -271,7 +272,8 @@ unchanged."
   buffer
   type
   pwd
-  data)
+  data
+  block-data)
 
 (defstruct
   (shime-buffer
@@ -323,7 +325,8 @@ object and attach itself to it."
                   :process nil
                   :type type
                   :pwd pwd
-                  :data "")))
+                  :data ""
+                  :block-data "")))
     (shime-start-process-for-shime-process process)
     (add-to-list 'shime-processes (cons name process))
     process))
@@ -555,7 +558,7 @@ better, i.e. provided by Cabal, later."
 	   (shime-buffer-ghci-send-expression
 	    (shime-process-buffer process)
 	    process
-	    (concat ":load " file)))
+	    (concat ":load " (shime-path-filename file))))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
 
@@ -607,7 +610,7 @@ better, i.e. provided by Cabal, later."
             ;; case of M-x erase buffer.
             ;; TODO: take another look at this to re-evaluate.
             (shime-buffer-ghci-send-expression
-                 (cdr buffer) process "")))))))
+             (cdr buffer) process "")))))))
 
 (defun shime-key-del ()
   "Handle the backspace key press."
@@ -626,6 +629,29 @@ better, i.e. provided by Cabal, later."
   (shime-history-toggle -1))
 
 ;; Macros
+
+(defmacro shime-with-process-buffered-lines (process input line-name body)
+  (let ((lines (gensym))
+        (parsed-lines (gensym))
+        (remaining-input (gensym)))
+    `(let* ((buffer (shime-process-buffer ,process))
+            (,lines (split-string (concat (shime-process-data ,process)
+                                          ,input)
+                                  "[\r\n]"))
+            (,parsed-lines (butlast ,lines))
+            (,remaining-input (car (or (last ,lines) '("")))))
+       (with-current-buffer (shime-buffer-buffer buffer)
+         (unless (or (null ,parsed-lines)
+                     (string= (shime-process-data ,process) ""))
+           (shime-delete-line))
+         (mapc (lambda (,line-name) ,body)
+               ,parsed-lines)
+         (when (not (string= ,remaining-input ""))
+           (shime-delete-line)
+           (shime-buffer-echo buffer (concat ,remaining-input)))
+         (if (string-match shime-ghci-prompt-regex ,remaining-input)
+             (setf (shime-process-data ,process) "")
+           (setf (shime-process-data ,process) ,remaining-input))))))
 
 (defmacro shime-with-process-session (process process-name session-name body)
   "Get the process object and session for a processes."
@@ -986,25 +1012,43 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle input from the process on a given session and process."
-  (let* ((buffer (shime-process-buffer process))
-         (lines (split-string
-                 (concat (shime-process-data process) input)
-                 "[\r\n]"))
-         (parsed-lines (butlast lines))
-         (remaining-input (car (or (last lines) '("")))))
-    (with-current-buffer (shime-buffer-buffer buffer)
-      (unless (or (null parsed-lines)
-                  (string= (shime-process-data process) ""))
-        (shime-delete-line))
-      (mapc (lambda (line)
-                (shime-buffer-echo buffer (concat line "\n")))
-              parsed-lines)
-      (when (not (string= remaining-input ""))
-        (shime-delete-line)
-        (shime-buffer-echo buffer (concat remaining-input)))
-      (if (string-match shime-ghci-prompt-regex remaining-input)
-        (setf (shime-process-data process) "")
-        (setf (shime-process-data process) remaining-input)))))
+  (shime-with-process-buffered-lines
+   process input line
+   (let* ((err "^\\(.+?\\):\\([0-9]+\\):\\(\\([0-9]+\\):\\)?")
+          (block-data (shime-process-block-data process))
+          (block-data-p (not (string= block-data "")))
+          (was-error nil))
+     (if (or (string-match err line)
+             (and block-data-p (string-match "^    " line)))
+         (setf (shime-process-block-data process)
+               (concat block-data "\n" line))
+       (when block-data-p
+         (shime-buffer-echo buffer block-data)
+         (let* ((end (point))
+                (start (- end (length block-data)))
+                (overlay (make-overlay start end))
+                (block-data. (shime-trim-flat
+                              block-data))
+                (err-str (concat (substring block-data. 0 60)
+                                 " ...")))
+           (overlay-put overlay 'invisible t)
+           (overlay-put overlay 'before-string
+                        (propertize err-str
+                                    'font-lock-face
+                                    'font-lock-warning-face)))
+         (setf (shime-process-block-data process) "")
+         (setq was-error t))
+       (if (string= "" line)
+           (shime-buffer-echo buffer "\n")
+         (shime-buffer-echo buffer (concat
+                                    (if was-error "\n" "")
+                                    line "\n")))))))
+
+(defun shime-trim-flat (str)
+  (replace-regexp-in-string
+   "[\r\n ]+"
+   " "
+   block-data))
 
 (defun shime-delete-line ()
   "Delete the current line."
@@ -1147,6 +1191,32 @@ better, i.e. provided by Cabal, later."
   "Is one string a prefix of another?"
   (and (<= (length a) (length b))
        (string= (substring b 0 (length a)) a)))
+
+(defun shime-strip-/ (a)
+  "Strip trailing slashes."
+  (replace-regexp-in-string "[/\\\\]+$" "" a))
+
+(defun shime-/ (a b)
+  "Append two paths."
+  (concat (shime-strip-/ a)
+          "/"
+          (replace-regexp-in-string "^[/\\\\]+" "" b)))
+
+(defun shime-path-filename (path)
+  "Get the filename part of a path."
+  (car (last (shime-split-path path))))
+
+;; Haven't seen an Elisp function that does this.
+(defun shime-path-directory (path)
+  "Get the directory part of a path."
+  (if (file-directory-p path)
+      path
+    ;; I think `/' works fine on Windows.
+    (reduce #'shime-/ (butlast (shime-split-path path)))))
+
+(defun shime-split-path (path)
+  "Split a filename into path segments."
+  (split-string path "[/\\\\]"))
 
 (provide 'shime)
 
