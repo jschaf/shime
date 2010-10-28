@@ -41,6 +41,9 @@
 
 ;; Mode definition
 
+(eval-when-compile
+  (require 'cl))
+
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
