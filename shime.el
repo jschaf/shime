@@ -8,7 +8,7 @@
 ;; A major mode for interacting with a Haskell inferior process.
 ;;
 ;; * Currently only supports GHCi.
-;; * Not tested on OS X or Windows. Should work on both.
+;; * Not tested on OS X or Windows.  Should work on both.
 ;;
 ;;; License:
 ;;
@@ -526,6 +526,7 @@ better, i.e. provided by Cabal, later."
   shime-cabal-process-of-buffer)
 
 (defun shime-cabal-command (cmd)
+  "Run a cabal command."
   (interactive)
   (shime-with-buffer-cabal-process
    process
@@ -540,7 +541,7 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
-  current session GHCi process."
+current session GHCi process."
   (interactive)
   (shime-with-buffer-ghci-process
    process
@@ -696,7 +697,7 @@ better, i.e. provided by Cabal, later."
     (make-local-variable 'shime-history-index-of-buffer)))
 
 (defun shime-history-toggle (direction)
-  "Toggle the prompt contents by cycling the history."
+  "Toggle the prompt contents by cycling the history in DIRECTION."
   (shime-history-ensure-created)
   (setq shime-history-index-of-buffer
         (+ shime-history-index-of-buffer
