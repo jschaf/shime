@@ -813,14 +813,16 @@ current session GHCi process."
     (shime-attach-buffer-to-session session buffer)
     buffer))
 
-(defun shime-get-buffer-ghci-process ()
-  "Get the GHCi process of the current buffer."
-  (if (and (default-boundp 'shime-ghci-process-of-buffer)
-           (assoc shime-ghci-process-of-buffer shime-processes))
-      shime-ghci-process-of-buffer
-    (progn (setq shime-ghci-process-of-buffer nil)
-           (make-local-variable 'shime-ghci-process-of-buffer)
-           (shime-choose-buffer-ghci-process-or-default))))
+(defun shime-get-buffer-ghci-process (&optional buffer)
+  "Get the GHCi process of BUFFER.
+If BUFFER is nil, use the current buffer."
+  (with-current-buffer (or buffer (current-buffer))
+    (if (and (default-boundp 'shime-ghci-process-of-buffer)
+	     (assoc shime-ghci-process-of-buffer shime-processes))
+	shime-ghci-process-of-buffer
+      (setq shime-ghci-process-of-buffer nil)
+      (make-local-variable 'shime-ghci-process-of-buffer)
+      (shime-choose-buffer-ghci-process-or-default))))
 
 (defun shime-get-buffer-cabal-process ()
   "Get the Cabal process of the current buffer."
