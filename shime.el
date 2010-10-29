@@ -108,7 +108,7 @@ A header-line does not scroll with the rest of the buffer."
   :group 'shime
   :type 'boolean)
 
-(defcustom shime-header-line-format "%f %p"
+(defcustom shime-header-line-format "%c:%f -- %p"
   "A string to be formatted and shown in the header-line in `shime-mode'.
 
 Set this to nil if you do not want the header line to be
@@ -118,6 +118,7 @@ The string is formatted using `format-spec' and the result is set as the value
 of `mode-line-buffer-identification'.
 
 The following characters are replaced:
+%c: Cabal project name.
 %f: Currently loaded file.
 %p: List of currently loaded packages.
 %s: Current process status."
@@ -1195,17 +1196,33 @@ If BUFFER is nil, use the current buffer."
 
 ;; UI
 
+(defun shime-format-cabal-project-name (process)
+  "Format the cabal project name.
+If the process is not associated with a cabal project return
+\"\"."
+  "xmonad")
+
 (defun shime-format-loaded-packages (process)
   "Return the currently loaded packages of PROCESS."
   "base mtl data.list")
 
 (defun shime-format-loaded-file (process)
   "Return the currently loaded file of PROCESS."
-  "/usr/bin/xmonad.hs")
+  "src/xmonad.hs")
+
+(defun shime-format-process-status (process)
+  "Format the current status of PROCESS."
+  (concat ":"
+	  (case (shime-get-process-status process)
+	    ('running (propertize "running" 'face 'shime-process-success))
+	    ('exited (propertize "exited" 'face 'shime-process-failure))
+	    ('restarting (propertize "restarting" 'face 'shime-process-failure))
+	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
 
 (defun shime-format-header-line (process)
   "Format the header given PROCESS."
   (let* ((spec (format-spec-make
+		?c (shime-format-cabal-project-name process)
 		?f (shime-format-loaded-file process)
 		?p (shime-format-loaded-packages process)
 		?s (shime-format-process-status process)))
@@ -1216,15 +1233,6 @@ If BUFFER is nil, use the current buffer."
 (defun shime-get-process-status (process)
   "Return the current status of PROCESS."
   'running)
-
-(defun shime-format-process-status (process)
-  "Format the current status of PROCESS."
-  (concat ":"
-	  (case (shime-get-process-status process)
-	    ('running (propertize "running" 'face 'shime-process-success))
-	    ('exited (propertize "exited" 'face 'shime-process-failure))
-	    ('restarting (propertize "restarting" 'face 'shime-process-failure))
-	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
 
 (defun shime-update-mode-line-buffer (buffer)
   "Update the mode line in a single BUFFER."
