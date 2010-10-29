@@ -123,7 +123,8 @@ The following characters are replaced:
   :group 'shime
   :set (lambda (sym val)
 	 (set sym val)
-	 (shime-update-mode-line nil))
+	 (when (fboundp 'shime-update-mode-line)
+	   (shime-update-mode-line)))
   :type '(choice (const :tag "Disabled" nil)
 
 		 string))
