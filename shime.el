@@ -1173,7 +1173,6 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-relative-to (a b)
   "Is a path b relative to path a?"
-  (message "a-b %s %s" a b)
   (shime-is-prefix-of (directory-file-name a)
 		      (directory-file-name b)))
 
