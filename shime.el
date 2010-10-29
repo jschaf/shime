@@ -684,7 +684,7 @@ current session GHCi process."
   `(if (null shime-sessions)
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
-                  ,body)
+                  ,@body)
          (message (shime-string 'needed-a-session)))
      ,@body))
 
@@ -693,7 +693,7 @@ current session GHCi process."
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
         (let ((,name (cdar shime-sessions)))
-          ,body)
+          ,@body)
       (let ((,name (assoc (shime-choose-session) shime-sessions)))
         (if ,name
             (let ((,name (cdr ,name)))
