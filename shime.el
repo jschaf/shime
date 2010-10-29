@@ -118,15 +118,15 @@ The string is formatted using `format-spec' and the result is set as the value
 of `mode-line-buffer-identification'.
 
 The following characters are replaced:
+%f: Currently loaded file.
 %p: List of currently loaded packages.
-%f: Currently loaded file."
+%s: Current process status."
   :group 'shime
   :set (lambda (sym val)
 	 (set sym val)
 	 (when (fboundp 'shime-update-mode-line)
 	   (shime-update-mode-line)))
   :type '(choice (const :tag "Disabled" nil)
-
 		 string))
 
 (defface shime-header-line
