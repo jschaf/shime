@@ -602,7 +602,8 @@ current session GHCi process."
 	    process
 	    (concat ":load " file)))
        (shime-set-load-root process file-dir)
-       (shime-load-file)))))
+       (shime-load-file))))
+  (shime-update-mode-line))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -878,6 +879,7 @@ If BUFFER is nil, use the current buffer."
                                    (shime-new-process-name session "cabal")
                                    buffer)
     (setf (shime-session-active-p session) t)
+    (shime-update-mode-line)
     session))
 
 (defun shime-new-buffer-name (session)
