@@ -1010,39 +1010,45 @@ better, i.e. provided by Cabal, later."
    process. process session
    (shime-ghci-filter-handle-input session process input)))
 
+(defface shime-ghci-error
+  '((t :background "#cc3232" :foreground "white"))
+  "Face for error messages."
+  :group 'shime)
+
+(defface shime-ghci-warning
+  '((t :background "#fbf0bb" :foreground "#7e1b01"))
+  "Face for error messages."
+  :group 'shime)
+
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle input from the process on a given session and process."
   (shime-with-process-buffered-lines
    process input line
-   (let* ((err "^\\(.+?\\):\\([0-9]+\\):\\(\\([0-9]+\\):\\)?")
+   (let* ((err "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
           (block-data (shime-process-block-data process))
           (block-data-p (not (string= block-data "")))
-          (was-error nil))
+          (was-error nil)
+          (block-data-flat (replace-regexp-in-string "[\r\n ]+" " " block-data))
+          (err-match (string-match err block-data-flat))
+          (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
      (if (or (string-match err line)
              (and block-data-p (string-match "^    " line)))
          (setf (shime-process-block-data process)
-               (concat block-data "\n" line))
+               (if (not (string= "" block-data))
+                   (concat block-data "\n" line)
+                 line))
        (when block-data-p
-         (shime-buffer-echo buffer block-data)
-         (let* ((end (point))
-                (start (- end (length block-data)))
-                (overlay (make-overlay start end))
-                (block-data. (shime-trim-flat
-                              block-data))
-                (err-str (concat (substring block-data. 0 60)
-                                 " ...")))
-           (overlay-put overlay 'invisible t)
-           (overlay-put overlay 'before-string
-                        (propertize err-str
-                                    'font-lock-face
-                                    'font-lock-warning-face)))
+         (shime-buffer-echo buffer "\n")
+         (shime-buffer-echo buffer
+                            (propertize (concat block-data-flat)
+                                        'face (if warning-match
+                                                  'shime-ghci-warning
+                                                  'shime-ghci-error)))
          (setf (shime-process-block-data process) "")
          (setq was-error t))
-       (if (string= "" line)
-           (shime-buffer-echo buffer "\n")
-         (shime-buffer-echo buffer (concat
-                                    (if was-error "\n" "")
-                                    line "\n")))))))
+       (shime-buffer-echo buffer (concat (if (and was-error (not (string= "" line)))
+                                             "\n" "")
+                                         line "\n"))))))
 
 (defun shime-trim-flat (str)
   (replace-regexp-in-string
@@ -1122,7 +1128,7 @@ better, i.e. provided by Cabal, later."
     (goto-char (point-max))
     (with-selected-window (display-buffer (shime-buffer-buffer buffer) nil 'visible)
       (insert str)
-      (end-of-buffer))))
+      (goto-char (point-max)))))
 
 ;; Functions
 
