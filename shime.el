@@ -100,6 +100,38 @@
   :group 'shime
   :type 'string)
 
+(defcustom shime-use-header-line t
+  "Non-nil means to put Shime information in an Emacs header-line.
+A header-line does not scroll with the rest of the buffer."
+  :group 'shime
+  :type 'boolean)
+
+(defcustom shime-header-line-format "%f %p"
+  "A string to be formatted and shown in the header-line in `shime-mode'.
+
+Set this to nil if you do not want the header line to be
+displayed.
+
+The string is formatted using `format-spec' and the result is set as the value
+of `mode-line-buffer-identification'.
+
+The following characters are replaced:
+%p: List of currently loaded packages.
+%f: Currently loaded file."
+  :group 'shime
+  :set (lambda (sym val)
+	 (set sym val)
+	 (shime-update-mode-line nil))
+  :type '(choice (const :tag "Disabled" nil)
+
+		 string))
+
+(defface shime-header-line
+  '((t
+     :inherit font-lock-function-name-face))
+  "Face for the Shime header."
+  :group 'shime)
+
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -1144,6 +1176,47 @@ current session GHCi process."
   "Is one string a prefix of another?"
   (and (<= (length a) (length b))
        (string= (substring b 0 (length a)) a)))
+
+;; UI
+
+(defun shime-format-loaded-packages ()
+  "Return a space delimited list of currently loaded packages."
+  "Packages: base mtl data.list")
+
+(defun shime-format-loaded-file ()
+  "Return the currently loaded file for the GHCi process."
+  "/usr/bin/lol.hs")
+
+(defun shime-format-process-status ()
+  "Return the current status of the process"
+  ":Running")
+
+(defun shime-update-mode-line-buffer ()
+  "Update the mode line in a single Shime buffer BUFFER."
+  (interactive)
+  (let* ((spec (format-spec-make
+		?f (shime-format-loaded-file)
+		?p (shime-format-loaded-packages)
+		?s (shime-format-process-status)))
+	 (process-status (shime-format-process-status))
+	 (header (format-spec shime-header-line-format spec)))
+    (setq mode-line-process
+	  (list process-status))
+    (setq header-line-format
+	  (propertize header 'face 'shime-header-line)))
+
+  
+  (force-mode-line-update))
+
+(defun shime-update-mode-line (&optional buffer)
+  "Update the mode line in BUFFER.
+If BUFFER is nil, update the mode line in all Shime buffers."
+  (interactive)
+  (if (and buffer (bufferp buffer))
+      (shime-update-mode-line-buffer buffer)
+    (dolist (buf shime-buffers)
+      (when (buffer-live-p buf)
+	(shime-update-mode-line-buffer buf)))))
 
 (provide 'shime)
 
