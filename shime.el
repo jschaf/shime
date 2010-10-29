@@ -1200,11 +1200,11 @@ If BUFFER is nil, use the current buffer."
   "base mtl data.list")
 
 (defun shime-format-loaded-file (process)
-  "Return the currently loaded file for the PROCESS."
+  "Return the currently loaded file of PROCESS."
   "/usr/bin/xmonad.hs")
 
 (defun shime-format-header-line (process)
-  "Format the header given process PROCESS."
+  "Format the header given PROCESS."
   (let* ((spec (format-spec-make
 		?f (shime-format-loaded-file process)
 		?p (shime-format-loaded-packages process)
@@ -1214,10 +1214,11 @@ If BUFFER is nil, use the current buffer."
 
 
 (defun shime-get-process-status (process)
+  "Return the current status of PROCESS."
   'running)
 
 (defun shime-format-process-status (process)
-  "Return the current status of the process PROCESS."
+  "Format the current status of PROCESS."
   (concat ":"
 	  (case (shime-get-process-status process)
 	    ('running (propertize "running" 'face 'shime-process-success))
@@ -1226,7 +1227,7 @@ If BUFFER is nil, use the current buffer."
 	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
 
 (defun shime-update-mode-line-buffer (buffer)
-  "Update the mode line in a single Shime buffer BUFFER."
+  "Update the mode line in a single BUFFER."
   (with-current-buffer buffer
     (let ((process (shime-get-buffer-ghci-process buffer)))
       (setq mode-line-process (shime-format-process-status process))
