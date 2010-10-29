@@ -488,7 +488,7 @@ better, i.e. provided by Cabal, later."
   (interactive)
   (shime-with-any-session
    (if (= (length shime-sessions) 1)
-       (progn (setq shime-session-of-buffer (car (car shime-sessions)))
+       (progn (setq shime-session-of-buffer (caar shime-sessions))
               (message (funcall (shime-string 'buffer-session-was-set-default)
                                 shime-session-of-buffer))
               shime-session-of-buffer)
