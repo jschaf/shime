@@ -135,6 +135,15 @@ The following characters are replaced:
   "Face for the Shime header."
   :group 'shime)
 
+(defface shime-process-success
+  '((t
+     :foreground "green"))
+  "Face for the Shime process success in mode line.")
+
+(defface shime-process-failure
+  '((t
+     :foreground "red"))
+  "Face for the Shime process failure in the mode line.")
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
