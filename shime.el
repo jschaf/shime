@@ -1037,7 +1037,7 @@ If BUFFER is nil, use the current buffer."
         (shime-delete-line)
         (shime-buffer-echo buffer (concat remaining-input)))
       (if (string-match shime-ghci-prompt-regex remaining-input)
-        (setf (shime-process-data process) "")
+	  (setf (shime-process-data process) "")
         (setf (shime-process-data process) remaining-input)))))
 
 (defun shime-delete-line ()
