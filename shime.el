@@ -1192,34 +1192,43 @@ If BUFFER is nil, use the current buffer."
 
 ;; UI
 
-(defun shime-format-loaded-packages ()
-  "Return a space delimited list of currently loaded packages."
-  "Packages: base mtl data.list")
+(defun shime-format-loaded-packages (process)
+  "Return the currently loaded packages of PROCESS."
+  "base mtl data.list")
 
-(defun shime-format-loaded-file ()
-  "Return the currently loaded file for the GHCi process."
-  "/usr/bin/lol.hs")
+(defun shime-format-loaded-file (process)
+  "Return the currently loaded file for the PROCESS."
+  "/usr/bin/xmonad.hs")
 
-(defun shime-format-process-status ()
-  "Return the current status of the process"
-  ":Running")
-
-(defun shime-update-mode-line-buffer ()
-  "Update the mode line in a single Shime buffer BUFFER."
-  (interactive)
+(defun shime-format-header-line (process)
+  "Format the header given process PROCESS."
   (let* ((spec (format-spec-make
-		?f (shime-format-loaded-file)
-		?p (shime-format-loaded-packages)
-		?s (shime-format-process-status)))
-	 (process-status (shime-format-process-status))
+		?f (shime-format-loaded-file process)
+		?p (shime-format-loaded-packages process)
+		?s (shime-format-process-status process)))
 	 (header (format-spec shime-header-line-format spec)))
-    (setq mode-line-process
-	  (list process-status))
-    (setq header-line-format
-	  (propertize header 'face 'shime-header-line)))
+    (propertize header 'face 'shime-header-line)))
 
-  
-  (force-mode-line-update))
+
+(defun shime-get-process-status (process)
+  'running)
+
+(defun shime-format-process-status (process)
+  "Return the current status of the process PROCESS."
+  (concat ":"
+	  (case (shime-get-process-status process)
+	    ('running (propertize "running" 'face 'shime-process-success))
+	    ('exited (propertize "exited" 'face 'shime-process-failure))
+	    ('restarting (propertize "restarting" 'face 'shime-process-failure))
+	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
+
+(defun shime-update-mode-line-buffer (buffer)
+  "Update the mode line in a single Shime buffer BUFFER."
+  (with-current-buffer buffer
+    (let ((process (shime-get-buffer-ghci-process buffer)))
+      (setq mode-line-process (shime-format-process-status process))
+      (setq header-line-format (shime-format-header-line process)))
+    (force-mode-line-update)))
 
 (defun shime-update-mode-line (&optional buffer)
   "Update the mode line in BUFFER.
@@ -1227,9 +1236,12 @@ If BUFFER is nil, update the mode line in all Shime buffers."
   (interactive)
   (if (and buffer (bufferp buffer))
       (shime-update-mode-line-buffer buffer)
-    (dolist (buf shime-buffers)
-      (when (buffer-live-p buf)
-	(shime-update-mode-line-buffer buf)))))
+    (let ((process-buffers (mapcar (lambda (b)
+				     (get-buffer (car b)))
+				   shime-buffers)))
+      (dolist (buf process-buffers)
+	(when (buffer-live-p buf)
+	  (shime-update-mode-line-buffer buf))))))
 
 (provide 'shime)
 
