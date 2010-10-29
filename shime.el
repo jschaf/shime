@@ -125,7 +125,8 @@ The following characters are replaced:
   :group 'shime
   :set (lambda (sym val)
 	 (set sym val)
-	 (when (fboundp 'shime-update-mode-line)
+	 (when (and shime-use-header-line
+		    (fboundp 'shime-update-mode-line))
 	   (shime-update-mode-line)))
   :type '(choice (const :tag "Disabled" nil)
 		 string))
@@ -1236,11 +1237,12 @@ If the process is not associated with a cabal project return
 
 (defun shime-update-mode-line-buffer (buffer)
   "Update the mode line in a single BUFFER."
-  (with-current-buffer buffer
-    (let ((process (shime-get-buffer-ghci-process buffer)))
-      (setq mode-line-process (shime-format-process-status process))
-      (setq header-line-format (shime-format-header-line process)))
-    (force-mode-line-update)))
+  (when shime-use-header-line
+   (with-current-buffer buffer
+     (let ((process (shime-get-buffer-ghci-process buffer)))
+       (setq mode-line-process (shime-format-process-status process))
+       (setq header-line-format (shime-format-header-line process)))
+     (force-mode-line-update))))
 
 (defun shime-update-mode-line (&optional buffer)
   "Update the mode line in BUFFER.
