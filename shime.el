@@ -1059,7 +1059,8 @@ If BUFFER is nil, use the current buffer."
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
   (cond ((string-match "finished" event)
-         (shime-ghci-handle-finished process))))
+         (shime-ghci-handle-finished process)))
+  (shime-update-mode-line))
 
 (defun shime-ghci-handle-finished (process.)
   "Handle the event of GHCi dying or just closing."
