@@ -660,7 +660,7 @@ current session GHCi process."
 
 ;; Macros
 
-(defmacro shime-with-process-session (process process-name session-name body)
+(defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
      (if (not process)
@@ -675,18 +675,18 @@ current session GHCi process."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-               (progn ,body))))))))
+               ,@body)))))))
 
-(defmacro shime-with-any-session (body)
+(defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
   `(if (null shime-sessions)
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
                   ,body)
          (message (shime-string 'needed-a-session)))
-     ,body))
+     ,@body))
 
-(defmacro shime-with-session (name body)
+(defmacro shime-with-session (name &rest body)
   "The code this call needs a session. Ask to create one if needs be."
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
@@ -695,28 +695,28 @@ current session GHCi process."
       (let ((,name (assoc (shime-choose-session) shime-sessions)))
         (if ,name
             (let ((,name (cdr ,name)))
-              ,body)
+              ,@body)
           (message (shime-string 'needed-a-session)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-ghci-process (name body)
+(defmacro shime-with-buffer-ghci-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-ghci-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,body)))))))
+                   ,@body)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-cabal-process (name body)
+(defmacro shime-with-buffer-cabal-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-cabal-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,body)))))))
+                   ,@body)))))))
 
 ;; Procedures
 
