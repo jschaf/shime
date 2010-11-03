@@ -8,7 +8,7 @@
 ;; A major mode for interacting with a Haskell inferior process.
 ;;
 ;; * Currently only supports GHCi.
-;; * Not tested on OS X or Windows.  Should work on both.
+;; * Not tested on OS X or Windows. Should work on both.
 ;;
 ;;; License:
 ;;
@@ -50,8 +50,6 @@
 
 (eval-when-compile
   (require 'cl))
-
-(require 'format-spec)
 
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
@@ -102,49 +100,6 @@
   :group 'shime
   :type 'string)
 
-(defcustom shime-use-header-line t
-  "Non-nil means to put Shime information in an Emacs header-line.
-A header-line does not scroll with the rest of the buffer."
-  :group 'shime
-  :type 'boolean)
-
-(defcustom shime-header-line-format "%c:%f -- %p"
-  "A string to be formatted and shown in the header-line in `shime-mode'.
-
-Set this to nil if you do not want the header line to be
-displayed.
-
-The string is formatted using `format-spec' and the result is set as the value
-of `mode-line-buffer-identification'.
-
-The following characters are replaced:
-%c: Cabal project name.
-%f: Currently loaded file.
-%p: List of currently loaded packages.
-%s: Current process status."
-  :group 'shime
-  :set (lambda (sym val)
-	 (set sym val)
-	 (when (fboundp 'shime-update-mode-line)
-	   (shime-update-mode-line)))
-  :type '(choice (const :tag "Disabled" nil)
-		 string))
-
-(defface shime-header-line
-  '((t
-     :inherit font-lock-function-name-face))
-  "Face for the Shime header."
-  :group 'shime)
-
-(defface shime-process-success
-  '((t
-     :foreground "green"))
-  "Face for the Shime process success in mode line.")
-
-(defface shime-process-failure
-  '((t
-     :foreground "red"))
-  "Face for the Shime process failure in the mode line.")
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -390,7 +345,7 @@ object and attach itself to it."
       (with-current-buffer (shime-buffer-buffer buffer)
         (kill-all-local-variables)
         (use-local-map shime-mode-map)
-        (setq major-mode 'shime-mode)
+        (setq major-mode-shime-mode)
         (setq mode-name "Shime")
         (run-mode-hooks 'shime-mode-hook))
       buffer)))
@@ -438,15 +393,15 @@ object and attach itself to it."
                         (mapcar 'car shime-processes))))
 
 (defun shime-choose-load-root ()
-  "Prompt to set the root load path (defaults to current directory)."
   (interactive)
+  "Prompt to set the root load path (defaults to current directory)."
   (shime-with-buffer-ghci-process
    process
    (shime-prompt-load-root process shime-load-root)))
 
 (defun shime-choose-cabal-root ()
-  "Prompt to set the root Cabal path (defaults to current directory)."
   (interactive)
+  "Prompt to set the root Cabal path (defaults to current directory)."
   (shime-with-buffer-ghci-process
    process
    (shime-prompt-cabal-root process "")))
@@ -498,7 +453,7 @@ better, i.e. provided by Cabal, later."
   (interactive)
   (shime-with-any-session
    (if (= (length shime-sessions) 1)
-       (progn (setq shime-session-of-buffer (caar shime-sessions))
+       (progn (setq shime-session-of-buffer (car (car shime-sessions)))
               (message (funcall (shime-string 'buffer-session-was-set-default)
                                 shime-session-of-buffer))
               shime-session-of-buffer)
@@ -571,7 +526,6 @@ better, i.e. provided by Cabal, later."
   shime-cabal-process-of-buffer)
 
 (defun shime-cabal-command (cmd)
-  "Run a cabal command."
   (interactive)
   (shime-with-buffer-cabal-process
    process
@@ -586,7 +540,7 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
-current session GHCi process."
+  current session GHCi process."
   (interactive)
   (shime-with-buffer-ghci-process
    process
@@ -603,8 +557,7 @@ current session GHCi process."
 	    process
 	    (concat ":load " file)))
        (shime-set-load-root process file-dir)
-       (shime-load-file))))
-  (shime-update-mode-line))
+       (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -674,7 +627,7 @@ current session GHCi process."
 
 ;; Macros
 
-(defmacro shime-with-process-session (process process-name session-name &rest body)
+(defmacro shime-with-process-session (process process-name session-name body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
      (if (not process)
@@ -689,48 +642,48 @@ current session GHCi process."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-               ,@body)))))))
+               (progn ,body))))))))
 
-(defmacro shime-with-any-session (&rest body)
+(defmacro shime-with-any-session (body)
   "The code this call needs a session. Ask to create one if needs be."
   `(if (null shime-sessions)
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
-                  ,@body)
+                  ,body)
          (message (shime-string 'needed-a-session)))
-     ,@body))
+     ,body))
 
-(defmacro shime-with-session (name &rest body)
+(defmacro shime-with-session (name body)
   "The code this call needs a session. Ask to create one if needs be."
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
         (let ((,name (cdar shime-sessions)))
-          ,@body)
+          ,body)
       (let ((,name (assoc (shime-choose-session) shime-sessions)))
         (if ,name
             (let ((,name (cdr ,name)))
-              ,@body)
+              ,body)
           (message (shime-string 'needed-a-session)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-ghci-process (name &rest body)
+(defmacro shime-with-buffer-ghci-process (name body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-ghci-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,@body)))))))
+                   ,body)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-cabal-process (name &rest body)
+(defmacro shime-with-buffer-cabal-process (name body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-cabal-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,@body)))))))
+                   ,body)))))))
 
 ;; Procedures
 
@@ -743,7 +696,7 @@ current session GHCi process."
     (make-local-variable 'shime-history-index-of-buffer)))
 
 (defun shime-history-toggle (direction)
-  "Toggle the prompt contents by cycling the history in DIRECTION."
+  "Toggle the prompt contents by cycling the history."
   (shime-history-ensure-created)
   (setq shime-history-index-of-buffer
         (+ shime-history-index-of-buffer
@@ -827,28 +780,30 @@ current session GHCi process."
     (shime-attach-buffer-to-session session buffer)
     buffer))
 
-(defun shime-get-buffer-ghci-process (&optional buffer)
-  "Get the GHCi process of BUFFER.
-If BUFFER is nil, use the current buffer."
-  (with-current-buffer (or buffer (current-buffer))
-    (if (and (default-boundp 'shime-ghci-process-of-buffer)
-	     (assoc shime-ghci-process-of-buffer shime-processes))
-	shime-ghci-process-of-buffer
-      (setq shime-ghci-process-of-buffer nil)
-      (make-local-variable 'shime-ghci-process-of-buffer)
-      (shime-choose-buffer-ghci-process-or-default))))
+(defun shime-get-buffer-ghci-process ()
+  "Get the GHCi process of the current buffer."
+  (if (and (default-boundp 'shime-ghci-process-of-buffer)
+           shime-ghci-process-of-buffer
+           (assoc shime-ghci-process-of-buffer shime-processes))
+      shime-ghci-process-of-buffer
+    (progn (setq shime-ghci-process-of-buffer nil)
+           (make-local-variable 'shime-ghci-process-of-buffer)
+           (shime-choose-buffer-ghci-process-or-default))))
 
 (defun shime-get-buffer-cabal-process ()
   "Get the Cabal process of the current buffer."
   (if (and (default-boundp 'shime-cabal-process-of-buffer)
+           shime-cabal-process-of-buffer
            (assoc shime-cabal-process-of-buffer shime-processes))
       shime-cabal-process-of-buffer
-    (progn (set (make-local-variable 'shime-cabal-process-of-buffer) nil)
+    (progn (setq shime-cabal-process-of-buffer nil)
+           (make-local-variable 'shime-cabal-process-of-buffer)
            (shime-choose-buffer-cabal-process-or-default))))
 
 (defun shime-get-buffer-session ()
   "Get the session of the current buffer."
   (if (and (default-boundp 'shime-session-of-buffer)
+           shime-session-of-buffer
            (assoc shime-session-of-buffer shime-sessions))
       shime-session-of-buffer
     (progn (setq shime-session-of-buffer nil)
@@ -880,7 +835,6 @@ If BUFFER is nil, use the current buffer."
                                    (shime-new-process-name session "cabal")
                                    buffer)
     (setf (shime-session-active-p session) t)
-    (shime-update-mode-line)
     session))
 
 (defun shime-new-buffer-name (session)
@@ -944,7 +898,7 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-detach-buffer-from-session (buffer session)
   "Bidirectionally detach a buffer from a session."
-  (mapc (lambda (process)
+  (mapcar (lambda (process)
             (shime-detach-process-from-buffer process buffer))
           (shime-buffer-processes buffer))
   (setf (shime-session-buffers session)
@@ -1049,7 +1003,7 @@ If BUFFER is nil, use the current buffer."
         (shime-delete-line)
         (shime-buffer-echo buffer (concat remaining-input)))
       (if (string-match shime-ghci-prompt-regex remaining-input)
-	  (setf (shime-process-data process) "")
+        (setf (shime-process-data process) "")
         (setf (shime-process-data process) remaining-input)))))
 
 (defun shime-delete-line ()
@@ -1060,8 +1014,7 @@ If BUFFER is nil, use the current buffer."
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
   (cond ((string-match "finished" event)
-         (shime-ghci-handle-finished process)))
-  (shime-update-mode-line))
+         (shime-ghci-handle-finished process))))
 
 (defun shime-ghci-handle-finished (process.)
   "Handle the event of GHCi dying or just closing."
@@ -1078,10 +1031,10 @@ If BUFFER is nil, use the current buffer."
   "Kill a Shime session and all associated buffers and processes."
   (let ((session (assoc name shime-sessions)))
     (when session
-      (mapc (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
-	    (shime-session-buffers (cdr session)))
-      (mapc (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
-	    (shime-session-processes (cdr session)))
+      (mapcar (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
+              (shime-session-buffers (cdr session)))
+      (mapcar (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
+              (shime-session-processes (cdr session)))
       (setf (shime-session-active-p (cdr session)) nil)
       (setq shime-sessions
             (delete-if (lambda (keyvalue)
@@ -1125,7 +1078,7 @@ If BUFFER is nil, use the current buffer."
     (goto-char (point-max))
     (with-selected-window (display-buffer (shime-buffer-buffer buffer) nil 'visible)
       (insert str)
-      (goto-char (point-max)))))
+      (end-of-buffer))))
 
 ;; Functions
 
@@ -1160,8 +1113,8 @@ If BUFFER is nil, use the current buffer."
    (concat ":cd " root)))
 
 (defun shime-prompt-load-root (process def)
-  "Prompt to set the root path with a default value."
   (interactive)
+  "Prompt to set the root path with a default value."
   (shime-set-load-root
    process
    (read-from-minibuffer (shime-string 'new-load-root)
@@ -1174,8 +1127,8 @@ If BUFFER is nil, use the current buffer."
    (concat "cd " root)))
 
 (defun shime-prompt-cabal-root (process def)
-  "Prompt to set the root Cabal path with a default value."
   (interactive)
+  "Prompt to set the root Cabal path with a default value."
   (shime-set-cabal-root
    process
    (read-from-minibuffer (shime-string 'new-cabal-root)
@@ -1186,6 +1139,7 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-relative-to (a b)
   "Is a path b relative to path a?"
+  (message "a-b %s %s" a b)
   (shime-is-prefix-of (directory-file-name a)
 		      (directory-file-name b)))
 
@@ -1193,67 +1147,6 @@ If BUFFER is nil, use the current buffer."
   "Is one string a prefix of another?"
   (and (<= (length a) (length b))
        (string= (substring b 0 (length a)) a)))
-
-;; UI
-
-(defun shime-format-cabal-project-name (process)
-  "Format the cabal project name.
-If the process is not associated with a cabal project return
-\"\"."
-  "xmonad")
-
-(defun shime-format-loaded-packages (process)
-  "Return the currently loaded packages of PROCESS."
-  "base mtl data.list")
-
-(defun shime-format-loaded-file (process)
-  "Return the currently loaded file of PROCESS."
-  "src/xmonad.hs")
-
-(defun shime-format-process-status (process)
-  "Format the current status of PROCESS."
-  (concat ":"
-	  (case (shime-get-process-status process)
-	    ('running (propertize "running" 'face 'shime-process-success))
-	    ('exited (propertize "exited" 'face 'shime-process-failure))
-	    ('restarting (propertize "restarting" 'face 'shime-process-failure))
-	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
-
-(defun shime-format-header-line (process)
-  "Format the header given PROCESS."
-  (let* ((spec (format-spec-make
-		?c (shime-format-cabal-project-name process)
-		?f (shime-format-loaded-file process)
-		?p (shime-format-loaded-packages process)
-		?s (shime-format-process-status process)))
-	 (header (format-spec shime-header-line-format spec)))
-    (propertize header 'face 'shime-header-line)))
-
-
-(defun shime-get-process-status (process)
-  "Return the current status of PROCESS."
-  'running)
-
-(defun shime-update-mode-line-buffer (buffer)
-  "Update the mode line in a single BUFFER."
-  (with-current-buffer buffer
-    (let ((process (shime-get-buffer-ghci-process buffer)))
-      (setq mode-line-process (shime-format-process-status process))
-      (setq header-line-format (shime-format-header-line process)))
-    (force-mode-line-update)))
-
-(defun shime-update-mode-line (&optional buffer)
-  "Update the mode line in BUFFER.
-If BUFFER is nil, update the mode line in all Shime buffers."
-  (interactive)
-  (if (and buffer (bufferp buffer))
-      (shime-update-mode-line-buffer buffer)
-    (let ((process-buffers (mapcar (lambda (b)
-				     (get-buffer (car b)))
-				   shime-buffers)))
-      (dolist (buf process-buffers)
-	(when (buffer-live-p buf)
-	  (shime-update-mode-line-buffer buf))))))
 
 (provide 'shime)
 
