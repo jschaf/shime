@@ -558,7 +558,7 @@ better, i.e. provided by Cabal, later."
 	   (shime-buffer-ghci-send-expression
 	    (shime-process-buffer process)
 	    process
-	    (concat ":load " (shime-path-filename file))))
+	    (concat ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
 
