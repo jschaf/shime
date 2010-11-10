@@ -1063,8 +1063,11 @@ better, i.e. provided by Cabal, later."
 
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
-  (cond ((string-match "finished" event)
-         (shime-ghci-handle-finished process))))
+  (cond ((or (string-match "finished" event)
+             (string-match "segmentation fault" event))
+         (shime-ghci-handle-finished process))
+        (t (print process)
+           (print event))))
 
 (defun shime-ghci-handle-finished (process.)
   "Handle the event of GHCi dying or just closing."
