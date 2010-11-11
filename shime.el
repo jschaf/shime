@@ -646,12 +646,15 @@ better, i.e. provided by Cabal, later."
            (shime-delete-line))
          (mapc (lambda (,line-name) ,body)
                ,parsed-lines)
+
+         (if (string-match shime-ghci-prompt-regex ,remaining-input)
+             (progn (setf (shime-process-data ,process) "")
+                    (mapc (lambda (,line-name) ,body) '("")))
+           (setf (shime-process-data ,process) ,remaining-input))
+
          (when (not (string= ,remaining-input ""))
            (shime-delete-line)
-           (shime-buffer-echo buffer (concat ,remaining-input)))
-         (if (string-match shime-ghci-prompt-regex ,remaining-input)
-             (setf (shime-process-data ,process) "")
-           (setf (shime-process-data ,process) ,remaining-input))))))
+           (shime-buffer-echo buffer (concat ,remaining-input)))))))
 
 (defmacro shime-with-process-session (process process-name session-name body)
   "Get the process object and session for a processes."
@@ -1028,8 +1031,10 @@ better, i.e. provided by Cabal, later."
           (block-data (shime-process-block-data process))
           (block-data-p (not (string= block-data "")))
           (was-error nil)
-          (block-data-flat (replace-regexp-in-string "[\r\n ]+" " " block-data))
-          (err-match (string-match err block-data-flat))
+          (block-data-flat
+           (replace-regexp-in-string
+            "[\r\n ]+" " "
+            (replace-regexp-in-string "\nIn the.+$" "" block-data)))
           (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
      (if (or (string-match err line)
              (and block-data-p (string-match "^    " line)))
@@ -1038,12 +1043,12 @@ better, i.e. provided by Cabal, later."
                    (concat block-data "\n" line)
                  line))
        (when block-data-p
-         (shime-buffer-echo buffer "\n")
          (shime-buffer-echo buffer
                             (propertize (concat block-data-flat)
                                         'face (if warning-match
                                                   'shime-ghci-warning
-                                                  'shime-ghci-error)))
+                                                'shime-ghci-error)))
+         (shime-buffer-echo buffer "\n")
          (setf (shime-process-block-data process) "")
          (setq was-error t))
        (shime-buffer-echo buffer (concat (if (and was-error (not (string= "" line)))
