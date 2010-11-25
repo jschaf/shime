@@ -414,24 +414,10 @@ object and attach itself to it."
   (interactive)
   (shime-cabal-command "configure"))
 
-(defun shime-cabal-build ()
+(defun shime-cabal-build-and-copy ()
   "Run the Cabal build command."
   (interactive)
   (shime-cabal-command "build"))
-
-(defun shime-cabal-build-and-copy ()
-  "Run the Cabal build command, and copy the build .o and .hi
-files to the source dir. Duncan Coutts tells me that this is
-risky in the case of more complex build setups, and I acknowledge
-that. However, for my simple builds, it speeds up loading in GHCi
-from ten seconds to instant. Should come up with something
-better, i.e. provided by Cabal, later."
-  (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (shime-cabal-command
-    (concat "build &&"
-            "cp -R dist/build/*/*-tmp/* " (shime-process-pwd process)))))
 
 (defun shime-cabal-clean ()
   "Run the Cabal clean command."
@@ -558,7 +544,7 @@ better, i.e. provided by Cabal, later."
 	   (shime-buffer-ghci-send-expression
 	    (shime-process-buffer process)
 	    process
-	    (concat ":load " file)))
+	    (concat ":set -fobject-code\n" ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
 
