@@ -56,6 +56,7 @@
 (defvar shime-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "RET") 'shime-key-ret)
+    (define-key map (kbd "TAB") 'shime-key-tab)
     (define-key map (kbd "DEL") 'shime-key-del)
     (define-key map (kbd "C-j") 'shime-key-ret)
     (define-key map (kbd "M-p") 'shime-key-history-prev)
@@ -656,6 +657,12 @@ current session GHCi process."
             ;; TODO: take another look at this to re-evaluate.
             (shime-buffer-ghci-send-expression
                  (cdr buffer) process "")))))))
+
+(defun shime-key-tab ()
+  "Handle the tab key press."
+  (interactive)
+  ;; Do something.
+  )
 
 (defun shime-key-del ()
   "Handle the backspace key press."
