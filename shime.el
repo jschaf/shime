@@ -414,7 +414,7 @@ object and attach itself to it."
   (interactive)
   (shime-cabal-command "configure"))
 
-(defun shime-cabal-build-and-copy ()
+(defun shime-cabal-build ()
   "Run the Cabal build command."
   (interactive)
   (shime-cabal-command "build"))
