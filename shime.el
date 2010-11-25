@@ -1237,7 +1237,6 @@ If the process is not associated with a cabal project return
 	 (header (format-spec shime-header-line-format spec)))
     (propertize header 'face 'shime-header-line)))
 
-
 (defun shime-get-process-status (process)
   "Return the current status of PROCESS."
   'running)
@@ -1263,6 +1262,11 @@ If BUFFER is nil, update the mode line in all Shime buffers."
       (dolist (buf process-buffers)
 	(when (buffer-live-p buf)
 	  (shime-update-mode-line-buffer buf))))))
+
+;; Completion
+
+(defvar shime-ghci-commands
+  '(":?" ":abandon" ":add" ":back" ":break" ":browse" ":browse!" ":cd" ":check" ":cmd" ":continue" ":ctags" ":ctags!" ":def" ":def!" ":delete" ":edit" ":etags" ":force" ":forward" ":help" ":history" ":info" ":kind" ":list" ":load" ":main" ":module" ":print" ":quit" ":reload" ":run" ":set" ":show" ":sprint" ":step" ":steplocal" ":stepmodule" ":trace" ":type" ":undef" ":unset"))
 
 (provide 'shime)
 
