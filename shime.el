@@ -308,7 +308,8 @@ unchanged."
           buffer
           type
           pwd
-          data)))
+          data
+          block-data)))
   program-path
   name
   session
@@ -318,7 +319,8 @@ unchanged."
   buffer
   type
   pwd
-  data)
+  data
+  block-data)
 
 (defstruct
   (shime-buffer
@@ -370,7 +372,8 @@ object and attach itself to it."
                   :process nil
                   :type type
                   :pwd pwd
-                  :data "")))
+                  :data ""
+                  :block-data "")))
     (shime-start-process-for-shime-process process)
     (add-to-list 'shime-processes (cons name process))
     process))
@@ -458,24 +461,10 @@ object and attach itself to it."
   (interactive)
   (shime-cabal-command "configure"))
 
-(defun shime-cabal-build ()
+(defun shime-cabal-build-and-copy ()
   "Run the Cabal build command."
   (interactive)
   (shime-cabal-command "build"))
-
-(defun shime-cabal-build-and-copy ()
-  "Run the Cabal build command, and copy the build .o and .hi
-files to the source dir. Duncan Coutts tells me that this is
-risky in the case of more complex build setups, and I acknowledge
-that. However, for my simple builds, it speeds up loading in GHCi
-from ten seconds to instant. Should come up with something
-better, i.e. provided by Cabal, later."
-  (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (shime-cabal-command
-    (concat "build &&"
-            "cp -R dist/build/*/*-tmp/* " (shime-process-pwd process)))))
 
 (defun shime-cabal-clean ()
   "Run the Cabal clean command."
@@ -603,7 +592,7 @@ current session GHCi process."
 	   (shime-buffer-ghci-send-expression
 	    (shime-process-buffer process)
 	    process
-	    (concat ":load " file)))
+	    (concat ":set -fobject-code\n" ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file))))
   (shime-update-mode-line))
@@ -656,7 +645,7 @@ current session GHCi process."
             ;; case of M-x erase buffer.
             ;; TODO: take another look at this to re-evaluate.
             (shime-buffer-ghci-send-expression
-                 (cdr buffer) process "")))))))
+             (cdr buffer) process "")))))))
 
 (defun shime-key-tab ()
   "Handle the tab key press."
@@ -682,7 +671,33 @@ current session GHCi process."
 
 ;; Macros
 
-(defmacro shime-with-process-session (process process-name session-name &rest body)
+(defmacro shime-with-process-buffered-lines (process input line-name body)
+  (let ((lines (gensym))
+        (parsed-lines (gensym))
+        (remaining-input (gensym)))
+    `(let* ((buffer (shime-process-buffer ,process))
+            (,lines (split-string (concat (shime-process-data ,process)
+                                          ,input)
+                                  "[\r\n]"))
+            (,parsed-lines (butlast ,lines))
+            (,remaining-input (car (or (last ,lines) '("")))))
+       (with-current-buffer (shime-buffer-buffer buffer)
+         (unless (or (null ,parsed-lines)
+                     (string= (shime-process-data ,process) ""))
+           (shime-delete-line))
+         (mapc (lambda (,line-name) ,body)
+               ,parsed-lines)
+
+         (if (string-match shime-ghci-prompt-regex ,remaining-input)
+             (progn (setf (shime-process-data ,process) "")
+                    (mapc (lambda (,line-name) ,body) '("")))
+           (setf (shime-process-data ,process) ,remaining-input))
+
+         (when (not (string= ,remaining-input ""))
+           (shime-delete-line)
+           (shime-buffer-echo buffer (concat ,remaining-input)))))))
+
+(defmacro shime-with-process-session (process process-name session-name body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
      (if (not process)
@@ -1038,27 +1053,53 @@ If BUFFER is nil, use the current buffer."
    process. process session
    (shime-ghci-filter-handle-input session process input)))
 
+(defface shime-ghci-error
+  '((t :background "#cc3232" :foreground "white"))
+  "Face for error messages."
+  :group 'shime)
+
+(defface shime-ghci-warning
+  '((t :background "#fbf0bb" :foreground "#7e1b01"))
+  "Face for error messages."
+  :group 'shime)
+
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle input from the process on a given session and process."
-  (let* ((buffer (shime-process-buffer process))
-         (lines (split-string
-                 (concat (shime-process-data process) input)
-                 "[\r\n]"))
-         (parsed-lines (butlast lines))
-         (remaining-input (car (or (last lines) '("")))))
-    (with-current-buffer (shime-buffer-buffer buffer)
-      (unless (or (null parsed-lines)
-                  (string= (shime-process-data process) ""))
-        (shime-delete-line))
-      (mapc (lambda (line)
-                (shime-buffer-echo buffer (concat line "\n")))
-              parsed-lines)
-      (when (not (string= remaining-input ""))
-        (shime-delete-line)
-        (shime-buffer-echo buffer (concat remaining-input)))
-      (if (string-match shime-ghci-prompt-regex remaining-input)
-	  (setf (shime-process-data process) "")
-        (setf (shime-process-data process) remaining-input)))))
+  (shime-with-process-buffered-lines
+   process input line
+   (let* ((err "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
+          (block-data (shime-process-block-data process))
+          (block-data-p (not (string= block-data "")))
+          (was-error nil)
+          (block-data-flat
+           (replace-regexp-in-string
+            "[\r\n ]+" " "
+            (replace-regexp-in-string "\nIn the.+$" "" block-data)))
+          (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
+     (if (or (string-match err line)
+             (and block-data-p (string-match "^    " line)))
+         (setf (shime-process-block-data process)
+               (if (not (string= "" block-data))
+                   (concat block-data "\n" line)
+                 line))
+       (when block-data-p
+         (shime-buffer-echo buffer
+                            (propertize (concat block-data-flat)
+                                        'face (if warning-match
+                                                  'shime-ghci-warning
+                                                'shime-ghci-error)))
+         (shime-buffer-echo buffer "\n")
+         (setf (shime-process-block-data process) "")
+         (setq was-error t))
+       (shime-buffer-echo buffer (concat (if (and was-error (not (string= "" line)))
+                                             "\n" "")
+                                         line "\n"))))))
+
+(defun shime-trim-flat (str)
+  (replace-regexp-in-string
+   "[\r\n ]+"
+   " "
+   block-data))
 
 (defun shime-delete-line ()
   "Delete the current line."
@@ -1067,9 +1108,11 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
-  (cond ((string-match "finished" event)
-         (shime-ghci-handle-finished process)))
-  (shime-update-mode-line))
+  (cond ((or (string-match "finished" event)
+             (string-match "segmentation fault" event))
+         (shime-ghci-handle-finished process))
+        (t (print process)
+           (print event))))
 
 (defun shime-ghci-handle-finished (process.)
   "Handle the event of GHCi dying or just closing."
@@ -1202,71 +1245,31 @@ If BUFFER is nil, use the current buffer."
   (and (<= (length a) (length b))
        (string= (substring b 0 (length a)) a)))
 
-;; UI
+(defun shime-strip-/ (a)
+  "Strip trailing slashes."
+  (replace-regexp-in-string "[/\\\\]+$" "" a))
 
-(defun shime-format-cabal-project-name (process)
-  "Format the cabal project name.
-If the process is not associated with a cabal project return
-\"\"."
-  "xmonad")
+(defun shime-/ (a b)
+  "Append two paths."
+  (concat (shime-strip-/ a)
+          "/"
+          (replace-regexp-in-string "^[/\\\\]+" "" b)))
 
-(defun shime-format-loaded-packages (process)
-  "Return the currently loaded packages of PROCESS."
-  "base mtl data.list")
+(defun shime-path-filename (path)
+  "Get the filename part of a path."
+  (car (last (shime-split-path path))))
 
-(defun shime-format-loaded-file (process)
-  "Return the currently loaded file of PROCESS."
-  "src/xmonad.hs")
+;; Haven't seen an Elisp function that does this.
+(defun shime-path-directory (path)
+  "Get the directory part of a path."
+  (if (file-directory-p path)
+      path
+    ;; I think `/' works fine on Windows.
+    (reduce #'shime-/ (butlast (shime-split-path path)))))
 
-(defun shime-format-process-status (process)
-  "Format the current status of PROCESS."
-  (concat ":"
-	  (case (shime-get-process-status process)
-	    ('running (propertize "running" 'face 'shime-process-success))
-	    ('exited (propertize "exited" 'face 'shime-process-failure))
-	    ('restarting (propertize "restarting" 'face 'shime-process-failure))
-	    (otherwise (propertize "unknown" 'face 'shime-process-failure)))))
-
-(defun shime-format-header-line (process)
-  "Format the header given PROCESS."
-  (let* ((spec (format-spec-make
-		?c (shime-format-cabal-project-name process)
-		?f (shime-format-loaded-file process)
-		?p (shime-format-loaded-packages process)
-		?s (shime-format-process-status process)))
-	 (header (format-spec shime-header-line-format spec)))
-    (propertize header 'face 'shime-header-line)))
-
-(defun shime-get-process-status (process)
-  "Return the current status of PROCESS."
-  'running)
-
-(defun shime-update-mode-line-buffer (buffer)
-  "Update the mode line in a single BUFFER."
-  (when shime-use-header-line
-   (with-current-buffer buffer
-     (let ((process (shime-get-buffer-ghci-process buffer)))
-       (setq mode-line-process (shime-format-process-status process))
-       (setq header-line-format (shime-format-header-line process)))
-     (force-mode-line-update))))
-
-(defun shime-update-mode-line (&optional buffer)
-  "Update the mode line in BUFFER.
-If BUFFER is nil, update the mode line in all Shime buffers."
-  (interactive)
-  (if (and buffer (bufferp buffer))
-      (shime-update-mode-line-buffer buffer)
-    (let ((process-buffers (mapcar (lambda (b)
-				     (get-buffer (car b)))
-				   shime-buffers)))
-      (dolist (buf process-buffers)
-	(when (buffer-live-p buf)
-	  (shime-update-mode-line-buffer buf))))))
-
-;; Completion
-
-(defvar shime-ghci-commands
-  '(":?" ":abandon" ":add" ":back" ":break" ":browse" ":browse!" ":cd" ":check" ":cmd" ":continue" ":ctags" ":ctags!" ":def" ":def!" ":delete" ":edit" ":etags" ":force" ":forward" ":help" ":history" ":info" ":kind" ":list" ":load" ":main" ":module" ":print" ":quit" ":reload" ":run" ":set" ":show" ":sprint" ":step" ":steplocal" ":stepmodule" ":trace" ":type" ":undef" ":unset"))
+(defun shime-split-path (path)
+  "Split a filename into path segments."
+  (split-string path "[/\\\\]"))
 
 (provide 'shime)
 
