@@ -519,7 +519,7 @@ object and attach itself to it."
   (shime-with-buffer-cabal-process
    process
    (progn
-     (save-buffer)
+     (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
          (shime-cabal-send-cmd process cmd)
        (progn (shime-prompt-cabal-root
@@ -535,7 +535,7 @@ object and attach itself to it."
    process
    (let* ((file (buffer-file-name))
 	  (file-dir (file-name-directory file)))
-     (save-buffer)
+     (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
 	 (progn
 	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
