@@ -461,7 +461,7 @@ object and attach itself to it."
   (interactive)
   (shime-cabal-command "configure"))
 
-(defun shime-cabal-build-and-copy ()
+(defun shime-cabal-build ()
   "Run the Cabal build command."
   (interactive)
   (shime-cabal-command "build"))
@@ -567,7 +567,7 @@ object and attach itself to it."
   (shime-with-buffer-cabal-process
    process
    (progn
-     (save-buffer)
+     (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
          (shime-cabal-send-cmd process cmd)
        (progn (shime-prompt-cabal-root
@@ -583,7 +583,7 @@ current session GHCi process."
    process
    (let* ((file (buffer-file-name))
 	  (file-dir (file-name-directory file)))
-     (save-buffer)
+     (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
 	 (progn
 	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
@@ -671,7 +671,7 @@ current session GHCi process."
 
 ;; Macros
 
-(defmacro shime-with-process-buffered-lines (process input line-name body)
+(defmacro shime-with-process-buffered-lines (process input line-name &rest body)
   (let ((lines (gensym))
         (parsed-lines (gensym))
         (remaining-input (gensym)))
@@ -685,19 +685,19 @@ current session GHCi process."
          (unless (or (null ,parsed-lines)
                      (string= (shime-process-data ,process) ""))
            (shime-delete-line))
-         (mapc (lambda (,line-name) ,body)
+         (mapc (lambda (,line-name) ,@body)
                ,parsed-lines)
 
          (if (string-match shime-ghci-prompt-regex ,remaining-input)
              (progn (setf (shime-process-data ,process) "")
-                    (mapc (lambda (,line-name) ,body) '("")))
+                    (mapc (lambda (,line-name) ,@body) '("")))
            (setf (shime-process-data ,process) ,remaining-input))
 
          (when (not (string= ,remaining-input ""))
            (shime-delete-line)
            (shime-buffer-echo buffer (concat ,remaining-input)))))))
 
-(defmacro shime-with-process-session (process process-name session-name body)
+(defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
      (if (not process)
@@ -712,7 +712,7 @@ current session GHCi process."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-               ,@body)))))))
+	       ,@body)))))))
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -995,25 +995,58 @@ If BUFFER is nil, use the current buffer."
    'cabal
    nil))
 
+(defun shime-cabal-filter-handle-input (session process input)
+  "Handle input from the process on a given session and process."
+  (shime-with-process-buffered-lines
+   process input line
+   (shime-buffer-echo
+    buffer
+    (cond
+     ;; Redisplay the prompt after cabal finishes.
+     ;;
+     ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
+     ;; doesn't seem to work at the moment.
+     ((string-match (shime-string 'cabal-command-finished) input)
+      (with-current-buffer (shime-buffer-buffer buffer)
+	(let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
+	  (shime-ghci-send-expression ghci-proc ""))
+	""))
+     (t (concat line "\n"))))))
+
 (defun shime-cabal-filter (process. input)
-  "The process filter for GHCi processes."
+  "The process filter for Cabal processes."
   (shime-with-process-session
    process. process session
-   ;; TODO: Custom handler for Cabal
-   (shime-ghci-filter-handle-input session process input)))
+   (shime-cabal-filter-handle-input session process input)))
 
 (defun shime-cabal-sentinel (process event)
-  "Sentinel for Cabal processes.")
+  "Sentinel for Cabal processes."
+  )
+
+(defface shime-cabal-command
+  '((t :foreground "skyblue3"))
+  "Face for cabal commands."
+  :group 'shime)
 
 (defun shime-cabal-send-cmd (process cmd)
   "Send an expression."
-  (process-send-string (shime-process-process process)
-                       (concat
-                        shime-cabal-program-path
-                        " "
-                        cmd "\n"
-                        ;; TODO: Something better than this.
-                        "echo \"" (shime-string 'cabal-command-finished) "\"\n")))
+
+  (let ((buffer (shime-process-buffer process))
+	(proc (shime-process-process process))
+	(cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
+
+    ;; Erase the prompt and color the command to show that the cabal
+    ;; command is separate from GHCi.
+    (with-current-buffer (shime-buffer-buffer buffer)
+      (shime-delete-line)
+      (shime-buffer-echo buffer (propertize (format "cabal %s\n" cmd)
+					    'face 'shime-cabal-command)))
+    (process-send-string proc
+			 (concat
+			  cabal-cmd
+			  ;; TODO: Something better than this.
+			  "echo \"" (shime-string 'cabal-command-finished) "\"\n"
+			  ))))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
