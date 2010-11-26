@@ -941,25 +941,58 @@ object and attach itself to it."
    'cabal
    nil))
 
+(defun shime-cabal-filter-handle-input (session process input)
+  "Handle input from the process on a given session and process."
+  (shime-with-process-buffered-lines
+   process input line
+   (shime-buffer-echo
+    buffer
+    (cond
+     ;; Redisplay the prompt after cabal finishes.
+     ;;
+     ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
+     ;; doesn't seem to work at the moment.
+     ((string-match (shime-string 'cabal-command-finished) input)
+      (with-current-buffer (shime-buffer-buffer buffer)
+	(let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
+	  (shime-ghci-send-expression ghci-proc ""))
+	""))
+     (t (concat line "\n"))))))
+
 (defun shime-cabal-filter (process. input)
-  "The process filter for GHCi processes."
+  "The process filter for Cabal processes."
   (shime-with-process-session
    process. process session
-   ;; TODO: Custom handler for Cabal
-   (shime-ghci-filter-handle-input session process input)))
+   (shime-cabal-filter-handle-input session process input)))
 
 (defun shime-cabal-sentinel (process event)
-  "Sentinel for Cabal processes.")
+  "Sentinel for Cabal processes."
+  )
+
+(defface shime-cabal-command
+  '((t :foreground "skyblue3"))
+  "Face for cabal commands."
+  :group 'shime)
 
 (defun shime-cabal-send-cmd (process cmd)
   "Send an expression."
-  (process-send-string (shime-process-process process)
-                       (concat
-                        shime-cabal-program-path
-                        " "
-                        cmd "\n"
-                        ;; TODO: Something better than this.
-                        "echo \"" (shime-string 'cabal-command-finished) "\"\n")))
+
+  (let ((buffer (shime-process-buffer process))
+	(proc (shime-process-process process))
+	(cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
+
+    ;; Erase the prompt and color the command to show that the cabal
+    ;; command is separate from GHCi.
+    (with-current-buffer (shime-buffer-buffer buffer)
+      (shime-delete-line)
+      (shime-buffer-echo buffer (propertize (format "cabal %s\n" cmd)
+					    'face 'shime-cabal-command)))
+    (process-send-string proc
+			 (concat
+			  cabal-cmd
+			  ;; TODO: Something better than this.
+			  "echo \"" (shime-string 'cabal-command-finished) "\"\n"
+			  ))))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
