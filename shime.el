@@ -616,7 +616,7 @@ object and attach itself to it."
 
 ;; Macros
 
-(defmacro shime-with-process-buffered-lines (process input line-name body)
+(defmacro shime-with-process-buffered-lines (process input line-name &rest body)
   (let ((lines (gensym))
         (parsed-lines (gensym))
         (remaining-input (gensym)))
@@ -630,19 +630,19 @@ object and attach itself to it."
          (unless (or (null ,parsed-lines)
                      (string= (shime-process-data ,process) ""))
            (shime-delete-line))
-         (mapc (lambda (,line-name) ,body)
+         (mapc (lambda (,line-name) ,@body)
                ,parsed-lines)
 
          (if (string-match shime-ghci-prompt-regex ,remaining-input)
              (progn (setf (shime-process-data ,process) "")
-                    (mapc (lambda (,line-name) ,body) '("")))
+                    (mapc (lambda (,line-name) ,@body) '("")))
            (setf (shime-process-data ,process) ,remaining-input))
 
          (when (not (string= ,remaining-input ""))
            (shime-delete-line)
            (shime-buffer-echo buffer (concat ,remaining-input)))))))
 
-(defmacro shime-with-process-session (process process-name session-name body)
+(defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
      (if (not process)
@@ -657,18 +657,18 @@ object and attach itself to it."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-               (progn ,body))))))))
+	       ,@body)))))))
 
-(defmacro shime-with-any-session (body)
+(defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
   `(if (null shime-sessions)
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
-                  ,body)
+                  ,@body)
          (message (shime-string 'needed-a-session)))
-     ,body))
+     ,@body))
 
-(defmacro shime-with-session (name body)
+(defmacro shime-with-session (name &rest body)
   "The code this call needs a session. Ask to create one if needs be."
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
@@ -677,28 +677,28 @@ object and attach itself to it."
       (let ((,name (assoc (shime-choose-session) shime-sessions)))
         (if ,name
             (let ((,name (cdr ,name)))
-              ,body)
+              ,@body)
           (message (shime-string 'needed-a-session)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-ghci-process (name body)
+(defmacro shime-with-buffer-ghci-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-ghci-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,body)))))))
+                   ,@body)))))))
 
 ;; TODO: Maybe a bit more interactivity.
-(defmacro shime-with-buffer-cabal-process (name body)
+(defmacro shime-with-buffer-cabal-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
     `(let ((,sym (shime-get-buffer-cabal-process)))
        (if ,sym
            (let ((,cons (assoc ,sym shime-processes)))
              (if ,cons
                  (let ((,name (cdr ,cons)))
-                   ,body)))))))
+                   ,@body)))))))
 
 ;; Procedures
 
