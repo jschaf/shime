@@ -673,7 +673,7 @@ object and attach itself to it."
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
         (let ((,name (cdar shime-sessions)))
-          ,body)
+          ,@body)
       (let ((,name (assoc (shime-choose-session) shime-sessions)))
         (if ,name
             (let ((,name (cdr ,name)))
