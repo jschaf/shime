@@ -532,6 +532,13 @@ object and attach itself to it."
                (file-name-directory (buffer-file-name)))
               (shime-cabal-command cmd))))))
 
+(defun shime-echo-command (buffer str)
+  "Insert STR into BUFFER with the shime-interactive-command face."
+  (with-current-buffer (shime-buffer-buffer buffer)
+    (shime-delete-line)
+    (shime-buffer-echo buffer
+		       (propertize str 'face 'shime-interactive-command))))
+
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
   current session GHCi process."
