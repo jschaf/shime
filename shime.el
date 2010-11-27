@@ -1038,12 +1038,12 @@ object and attach itself to it."
    (shime-ghci-filter-handle-input session process input)))
 
 (defface shime-ghci-error
-  '((t :background "#cc3232" :foreground "white"))
+  '((t :inherit 'compilation-error))
   "Face for error messages."
   :group 'shime)
 
 (defface shime-ghci-warning
-  '((t :background "#fbf0bb" :foreground "#7e1b01"))
+  '((t :inherit 'compilation-warning))
   "Face for error messages."
   :group 'shime)
 
