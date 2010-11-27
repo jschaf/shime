@@ -981,8 +981,8 @@ object and attach itself to it."
   "Sentinel for Cabal processes."
   )
 
-(defface shime-cabal-command
-  '((t :foreground "skyblue3"))
+(defface shime-interactive-command
+  '((t :inherit 'font-lock-keyword-face))
   "Face for cabal commands."
   :group 'shime)
 
