@@ -206,13 +206,13 @@ unchanged."
 
     (when (re-search-forward "cabal" nil t 2)
       (narrow-to-region (re-search-forward "Commands:\n")
-			(re-search-forward "^\n"))
+                        (re-search-forward "^\n"))
       (goto-char (point-min))
 
       (let (cmds)
-	(while (re-search-forward "^  \\([a-z]+\\)" nil t)
-	  (push (match-string 1) cmds))
-	(when cmds (setq shime-cabal-commands (reverse cmds)))))))
+        (while (re-search-forward "^  \\([a-z]+\\)" nil t)
+          (push (match-string 1) cmds))
+        (when cmds (setq shime-cabal-commands (reverse cmds)))))))
 
 ;; Globals
 
@@ -537,7 +537,7 @@ object and attach itself to it."
   (with-current-buffer (shime-buffer-buffer buffer)
     (shime-delete-line)
     (shime-buffer-echo buffer
-		       (propertize str 'face 'shime-interactive-command))))
+                       (propertize str 'face 'shime-interactive-command))))
 
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
@@ -546,17 +546,17 @@ object and attach itself to it."
   (shime-with-buffer-ghci-process
    process
    (let* ((file (buffer-file-name))
-	  (file-dir (file-name-directory file))
-	  (proc-buffer (shime-process-buffer process)))
+          (file-dir (file-name-directory file))
+          (proc-buffer (shime-process-buffer process)))
      (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
-	 (progn
-	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
-	     (when (shime-ask-change-root)
+         (progn
+           (unless (shime-relative-to (shime-process-pwd process) file-dir)
+             (when (shime-ask-change-root)
                (shime-prompt-load-root process file-dir)))
-	   (shime-echo-command proc-buffer (format "load %s\n" file))
-	   (shime-ghci-send-expression process ":set -fobject-code")
-	   (shime-ghci-send-expression process (concat ":load " file)))
+           (shime-echo-command proc-buffer (format "load %s\n" file))
+           (shime-ghci-send-expression process ":set -fobject-code")
+           (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
 
@@ -669,7 +669,7 @@ object and attach itself to it."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-	       ,@body)))))))
+               ,@body)))))))
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -966,9 +966,9 @@ object and attach itself to it."
      ;; doesn't seem to work at the moment.
      ((string-match (shime-string 'cabal-command-finished) line)
       (with-current-buffer (shime-buffer-buffer buffer)
-	(let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
-	  (shime-ghci-send-expression ghci-proc ""))
-	""))
+        (let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
+          (shime-ghci-send-expression ghci-proc ""))
+        ""))
      (t (concat line "\n"))))))
 
 (defun shime-cabal-filter (process. input)
@@ -990,19 +990,19 @@ object and attach itself to it."
   "Send an expression."
 
   (let ((buffer (shime-process-buffer process))
-	(proc (shime-process-process process))
-	(cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
+        (proc (shime-process-process process))
+        (cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
 
     ;; Erase the prompt and color the command to show that the cabal
     ;; command is separate from GHCi.
     (shime-echo-command buffer (format "cabal %s\n" cmd))
 
     (process-send-string proc
-			 (concat
-			  cabal-cmd
-			  ;; TODO: Something better than this.
-			  "echo \"" (shime-string 'cabal-command-finished) "\"\n"
-			  ))))
+                         (concat
+                          cabal-cmd
+                          ;; TODO: Something better than this.
+                          "echo \"" (shime-string 'cabal-command-finished) "\"\n"
+                          ))))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
@@ -1061,11 +1061,11 @@ object and attach itself to it."
           (block-data-p (not (string= block-data "")))
           (was-error nil)
           (block-data-flat
-	   (if shime-collapse-errors
-	       (replace-regexp-in-string
-		"[\r\n ]+" " "
-		(replace-regexp-in-string "\nIn the.+$" "" block-data))
-	     block-data))
+           (if shime-collapse-errors
+               (replace-regexp-in-string
+                "[\r\n ]+" " "
+                (replace-regexp-in-string "\nIn the.+$" "" block-data))
+             block-data))
           (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
      (if (or (string-match err line)
              (and block-data-p (string-match "^    " line)))
@@ -1227,7 +1227,7 @@ object and attach itself to it."
 (defun shime-relative-to (a b)
   "Is a path b relative to path a?"
   (shime-is-prefix-of (directory-file-name a)
-		      (directory-file-name b)))
+                      (directory-file-name b)))
 
 (defun shime-is-prefix-of (a b)
   "Is one string a prefix of another?"
