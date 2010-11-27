@@ -103,50 +103,11 @@
   :group 'shime
   :type 'string)
 
-(defcustom shime-use-header-line t
-  "Non-nil means to put Shime information in an Emacs header-line.
-A header-line does not scroll with the rest of the buffer."
+(defcustom shime-collapse-errors nil
+  "Collapse GHCi errors onto a single line."
   :group 'shime
   :type 'boolean)
 
-(defcustom shime-header-line-format "%c:%f -- %p"
-  "A string to be formatted and shown in the header-line in `shime-mode'.
-
-Set this to nil if you do not want the header line to be
-displayed.
-
-The string is formatted using `format-spec' and the result is set as the value
-of `mode-line-buffer-identification'.
-
-The following characters are replaced:
-%c: Cabal project name.
-%f: Currently loaded file.
-%p: List of currently loaded packages.
-%s: Current process status."
-  :group 'shime
-  :set (lambda (sym val)
-	 (set sym val)
-	 (when (and shime-use-header-line
-		    (fboundp 'shime-update-mode-line))
-	   (shime-update-mode-line)))
-  :type '(choice (const :tag "Disabled" nil)
-		 string))
-
-(defface shime-header-line
-  '((t
-     :inherit font-lock-function-name-face))
-  "Face for the Shime header."
-  :group 'shime)
-
-(defface shime-process-success
-  '((t
-     :foreground "green"))
-  "Face for the Shime process success in mode line.")
-
-(defface shime-process-failure
-  '((t
-     :foreground "red"))
-  "Face for the Shime process failure in the mode line.")
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -248,13 +209,13 @@ unchanged."
 
     (when (re-search-forward "cabal" nil t 2)
       (narrow-to-region (re-search-forward "Commands:\n")
-			(re-search-forward "^\n"))
+                        (re-search-forward "^\n"))
       (goto-char (point-min))
 
       (let (cmds)
-	(while (re-search-forward "^  \\([a-z]+\\)" nil t)
-	  (push (match-string 1) cmds))
-	(when cmds (setq shime-cabal-commands (reverse cmds)))))))
+        (while (re-search-forward "^  \\([a-z]+\\)" nil t)
+          (push (match-string 1) cmds))
+        (when cmds (setq shime-cabal-commands (reverse cmds)))))))
 
 ;; Globals
 
@@ -575,6 +536,13 @@ object and attach itself to it."
                (file-name-directory (buffer-file-name)))
               (shime-cabal-command cmd))))))
 
+(defun shime-echo-command (buffer str)
+  "Insert STR into BUFFER with the shime-interactive-command face."
+  (with-current-buffer (shime-buffer-buffer buffer)
+    (shime-delete-line)
+    (shime-buffer-echo buffer
+                       (propertize str 'face 'shime-interactive-command))))
+
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
 current session GHCi process."
@@ -582,20 +550,19 @@ current session GHCi process."
   (shime-with-buffer-ghci-process
    process
    (let* ((file (buffer-file-name))
-	  (file-dir (file-name-directory file)))
+          (file-dir (file-name-directory file))
+          (proc-buffer (shime-process-buffer process)))
      (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
-	 (progn
-	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
-	     (when (shime-ask-change-root)
+         (progn
+           (unless (shime-relative-to (shime-process-pwd process) file-dir)
+             (when (shime-ask-change-root)
                (shime-prompt-load-root process file-dir)))
-	   (shime-buffer-ghci-send-expression
-	    (shime-process-buffer process)
-	    process
-	    (concat ":set -fobject-code\n" ":load " file)))
+           (shime-echo-command proc-buffer (format "load %s\n" file))
+           (shime-ghci-send-expression process ":set -fobject-code")
+           (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
-       (shime-load-file))))
-  (shime-update-mode-line))
+       (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -712,7 +679,7 @@ current session GHCi process."
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-	       ,@body)))))))
+               ,@body)))))))
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -903,7 +870,6 @@ If BUFFER is nil, use the current buffer."
                                    (shime-new-process-name session "cabal")
                                    buffer)
     (setf (shime-session-active-p session) t)
-    (shime-update-mode-line)
     session))
 
 (defun shime-new-buffer-name (session)
@@ -1006,11 +972,11 @@ If BUFFER is nil, use the current buffer."
      ;;
      ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
      ;; doesn't seem to work at the moment.
-     ((string-match (shime-string 'cabal-command-finished) input)
+     ((string-match (shime-string 'cabal-command-finished) line)
       (with-current-buffer (shime-buffer-buffer buffer)
-	(let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
-	  (shime-ghci-send-expression ghci-proc ""))
-	""))
+        (let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
+          (shime-ghci-send-expression ghci-proc ""))
+        ""))
      (t (concat line "\n"))))))
 
 (defun shime-cabal-filter (process. input)
@@ -1023,8 +989,8 @@ If BUFFER is nil, use the current buffer."
   "Sentinel for Cabal processes."
   )
 
-(defface shime-cabal-command
-  '((t :foreground "skyblue3"))
+(defface shime-interactive-command
+  '((t :inherit 'font-lock-keyword-face))
   "Face for cabal commands."
   :group 'shime)
 
@@ -1032,21 +998,19 @@ If BUFFER is nil, use the current buffer."
   "Send an expression."
 
   (let ((buffer (shime-process-buffer process))
-	(proc (shime-process-process process))
-	(cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
+        (proc (shime-process-process process))
+        (cabal-cmd (format "%s %s\n" shime-cabal-program-path cmd)))
 
     ;; Erase the prompt and color the command to show that the cabal
     ;; command is separate from GHCi.
-    (with-current-buffer (shime-buffer-buffer buffer)
-      (shime-delete-line)
-      (shime-buffer-echo buffer (propertize (format "cabal %s\n" cmd)
-					    'face 'shime-cabal-command)))
+    (shime-echo-command buffer (format "cabal %s\n" cmd))
+
     (process-send-string proc
-			 (concat
-			  cabal-cmd
-			  ;; TODO: Something better than this.
-			  "echo \"" (shime-string 'cabal-command-finished) "\"\n"
-			  ))))
+                         (concat
+                          cabal-cmd
+                          ;; TODO: Something better than this.
+                          "echo \"" (shime-string 'cabal-command-finished) "\"\n"
+                          ))))
 
 (defun shime-cabal-send-line (process line)
   "Send an expression."
@@ -1087,13 +1051,13 @@ If BUFFER is nil, use the current buffer."
    (shime-ghci-filter-handle-input session process input)))
 
 (defface shime-ghci-error
-  '((t :background "#cc3232" :foreground "white"))
+  '((t :inherit 'compilation-error))
   "Face for error messages."
   :group 'shime)
 
 (defface shime-ghci-warning
-  '((t :background "#fbf0bb" :foreground "#7e1b01"))
-  "Face for error messages."
+  '((t :inherit 'compilation-warning))
+  "Face for warning messages."
   :group 'shime)
 
 (defun shime-ghci-filter-handle-input (session process input)
@@ -1105,9 +1069,11 @@ If BUFFER is nil, use the current buffer."
           (block-data-p (not (string= block-data "")))
           (was-error nil)
           (block-data-flat
-           (replace-regexp-in-string
-            "[\r\n ]+" " "
-            (replace-regexp-in-string "\nIn the.+$" "" block-data)))
+           (if shime-collapse-errors
+               (replace-regexp-in-string
+                "[\r\n ]+" " "
+                (replace-regexp-in-string "\nIn the.+$" "" block-data))
+             block-data))
           (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
      (if (or (string-match err line)
              (and block-data-p (string-match "^    " line)))
@@ -1124,9 +1090,7 @@ If BUFFER is nil, use the current buffer."
          (shime-buffer-echo buffer "\n")
          (setf (shime-process-block-data process) "")
          (setq was-error t))
-       (shime-buffer-echo buffer (concat (if (and was-error (not (string= "" line)))
-                                             "\n" "")
-                                         line "\n"))))))
+       (shime-buffer-echo buffer (concat line (unless (looking-back "\n") "\n")))))))
 
 (defun shime-trim-flat (str)
   (replace-regexp-in-string
@@ -1271,7 +1235,7 @@ If BUFFER is nil, use the current buffer."
 (defun shime-relative-to (a b)
   "Is a path b relative to path a?"
   (shime-is-prefix-of (directory-file-name a)
-		      (directory-file-name b)))
+                      (directory-file-name b)))
 
 (defun shime-is-prefix-of (a b)
   "Is one string a prefix of another?"
