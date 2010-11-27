@@ -100,6 +100,11 @@
   :group 'shime
   :type 'string)
 
+(defcustom shime-collapse-errors nil
+  "Collapse GHCi errors onto a single line."
+  :group 'shime
+  :type 'boolean)
+
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -1051,9 +1056,11 @@ object and attach itself to it."
           (block-data-p (not (string= block-data "")))
           (was-error nil)
           (block-data-flat
-           (replace-regexp-in-string
-            "[\r\n ]+" " "
-            (replace-regexp-in-string "\nIn the.+$" "" block-data)))
+	   (if shime-collapse-errors
+	       (replace-regexp-in-string
+		"[\r\n ]+" " "
+		(replace-regexp-in-string "\nIn the.+$" "" block-data))
+	     block-data))
           (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
      (if (or (string-match err line)
              (and block-data-p (string-match "^    " line)))
