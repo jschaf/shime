@@ -546,17 +546,17 @@ object and attach itself to it."
   (shime-with-buffer-ghci-process
    process
    (let* ((file (buffer-file-name))
-	  (file-dir (file-name-directory file)))
+	  (file-dir (file-name-directory file))
+	  (proc-buffer (shime-process-buffer process)))
      (when (buffer-modified-p) (save-buffer))
      (if (shime-process-pwd process)
 	 (progn
 	   (unless (shime-relative-to (shime-process-pwd process) file-dir)
 	     (when (shime-ask-change-root)
                (shime-prompt-load-root process file-dir)))
-	   (shime-buffer-ghci-send-expression
-	    (shime-process-buffer process)
-	    process
-	    (concat ":set -fobject-code\n" ":load " file)))
+	   (shime-echo-command proc-buffer (format "load %s\n" file))
+	   (shime-ghci-send-expression process ":set -fobject-code")
+	   (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
 
