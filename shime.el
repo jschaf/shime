@@ -1070,9 +1070,7 @@ object and attach itself to it."
          (shime-buffer-echo buffer "\n")
          (setf (shime-process-block-data process) "")
          (setq was-error t))
-       (shime-buffer-echo buffer (concat (if (and was-error (not (string= "" line)))
-                                             "\n" "")
-                                         line "\n"))))))
+       (shime-buffer-echo buffer (concat line (unless (looking-back "\n") "\n")))))))
 
 (defun shime-trim-flat (str)
   (replace-regexp-in-string
