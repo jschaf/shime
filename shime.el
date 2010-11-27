@@ -1044,7 +1044,7 @@ object and attach itself to it."
 
 (defface shime-ghci-warning
   '((t :inherit 'compilation-warning))
-  "Face for error messages."
+  "Face for warning messages."
   :group 'shime)
 
 (defun shime-ghci-filter-handle-input (session process input)
