@@ -995,10 +995,8 @@ object and attach itself to it."
 
     ;; Erase the prompt and color the command to show that the cabal
     ;; command is separate from GHCi.
-    (with-current-buffer (shime-buffer-buffer buffer)
-      (shime-delete-line)
-      (shime-buffer-echo buffer (propertize (format "cabal %s\n" cmd)
-					    'face 'shime-cabal-command)))
+    (shime-echo-command buffer (format "cabal %s\n" cmd))
+
     (process-send-string proc
 			 (concat
 			  cabal-cmd
