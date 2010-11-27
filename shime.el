@@ -957,7 +957,7 @@ object and attach itself to it."
      ;;
      ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
      ;; doesn't seem to work at the moment.
-     ((string-match (shime-string 'cabal-command-finished) input)
+     ((string-match (shime-string 'cabal-command-finished) line)
       (with-current-buffer (shime-buffer-buffer buffer)
 	(let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
 	  (shime-ghci-send-expression ghci-proc ""))
