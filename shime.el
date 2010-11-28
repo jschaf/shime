@@ -202,7 +202,9 @@
 If cabal doesn't exist, `shime-cabal-commands' is left
 unchanged."
   (with-temp-buffer
-    (insert (shell-command-to-string "cabal --help"))
+    (insert (shell-command-to-string (concat
+				      shime-cabal-program-path
+				      " --help")))
     (goto-char (point-min))
 
     (when (re-search-forward "cabal" nil t 2)
