@@ -581,38 +581,31 @@ current session GHCi process."
                          (line-end-position)
                          t
                          1))
-
 (defun shime-key-ret ()
   "Handle the return key press."
   (interactive)
-  (let* ((start (line-beginning-position))
-         (end (line-end-position))
-         (p (save-excursion
-              (goto-char start)
-              (search-forward-regexp shime-ghci-prompt-regex
-                                     end
-                                     t
-                                     1)))
-         (buffer (assoc (buffer-name) shime-buffers)))
-    (when buffer
-      (let ((process (shime-get-shime-buffer-ghci-process (cdr buffer))))
-        (when process
-          (if p
-              (let ((line (buffer-substring-no-properties p end)))
-                (shime-history-ensure-created)
-                (unless (string= "" line)
-                  (setq shime-history-of-buffer
-                        (cons line shime-history-of-buffer))
-                  (setq shime-history-index-of-buffer -1))
-                (shime-buffer-ghci-send-expression
-                 (cdr buffer) process line))
-            ;; If we're not at a prompt, send an empty line to
-            ;; the REPL, this'll trigger it sending a new prompt,
-            ;; which is probably what we want. At least in the
-            ;; case of M-x erase buffer.
-            ;; TODO: take another look at this to re-evaluate.
-            (shime-buffer-ghci-send-expression
-             (cdr buffer) process "")))))))
+  (shime-with-buffer-ghci-process
+   process
+   (let ((proc-buffer (shime-process-buffer process))
+	 (prompt-p (save-excursion
+		     (goto-char (line-beginning-position))
+                     (looking-at shime-ghci-prompt-regex)))
+	 (line (buffer-substring-no-properties
+		(match-end 0)
+		(line-end-position))))
+     (if prompt-p
+         (progn
+           (shime-history-ensure-created)
+           (unless (string= "" line)
+             (push line shime-history-of-buffer)
+             (setq shime-history-index-of-buffer -1))
+           (shime-buffer-ghci-send-expression proc-buffer process line))
+       ;; If we're not at a prompt, send an empty line to
+       ;; the REPL, this'll trigger it sending a new prompt,
+       ;; which is probably what we want. At least in the
+       ;; case of M-x erase buffer.
+       ;; TODO: take another look at this to re-evaluate.
+       (shime-buffer-ghci-send-expression proc-buffer process "")))))
 
 (defun shime-key-tab ()
   "Handle the tab key press."
