@@ -656,13 +656,28 @@ current session GHCi process."
                ,parsed-lines)
 
          (if (string-match shime-ghci-prompt-regex ,remaining-input)
-             (progn (setf (shime-process-data ,process) "")
-                    (mapc (lambda (,line-name) ,@body) '("")))
+	      (progn (setf (shime-process-data ,process) "")
+		     (mapc (lambda (,line-name) ,@body) '("")))
            (setf (shime-process-data ,process) ,remaining-input))
 
          (when (not (string= ,remaining-input ""))
-           (shime-delete-line)
-           (shime-buffer-echo buffer (concat ,remaining-input)))))))
+	   (shime-delete-line)
+	   (shime-buffer-echo
+	    buffer
+	    ;; Colorize the prompt with `shime-ghci-prompt' and set
+	    ;; it to read-only.  Set `rear-nonsticky' so properties
+	    ;; don't bleed onto user input.
+	    (if (string-match shime-ghci-prompt-regex ,remaining-input)
+		(let ((prompt (substring ,remaining-input
+					 (match-beginning 0)
+					 (match-end 0)))
+		      (rest (substring ,remaining-input (match-end 0))))
+		  (concat (propertize prompt
+				      'face 'shime-ghci-prompt
+				      'read-only t
+				      'rear-nonsticky t)
+			  rest))
+	      ,remaining-input)))))))
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
@@ -1058,6 +1073,11 @@ If BUFFER is nil, use the current buffer."
 (defface shime-ghci-warning
   '((t :inherit 'compilation-warning))
   "Face for warning messages."
+  :group 'shime)
+
+(defface shime-ghci-prompt
+  '((t :inherit 'font-lock-function-name-face))
+  "Face for the Shime GHCi prompt."
   :group 'shime)
 
 (defun shime-ghci-filter-handle-input (session process input)
