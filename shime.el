@@ -1120,8 +1120,9 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-delete-line ()
   "Delete the current line."
-  (delete-region (line-beginning-position)
-                 (line-end-position)))
+  ;; Set `inhibit-read-only' so we can erase the prompt.
+  (let ((inhibit-read-only t))
+    (delete-region (line-beginning-position) (line-end-position))))
 
 (defun shime-ghci-sentinel (process event)
   "Sentinel for GHCi processes."
