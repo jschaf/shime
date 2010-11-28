@@ -656,28 +656,28 @@ current session GHCi process."
                ,parsed-lines)
 
          (if (string-match shime-ghci-prompt-regex ,remaining-input)
-	      (progn (setf (shime-process-data ,process) "")
-		     (mapc (lambda (,line-name) ,@body) '("")))
+              (progn (setf (shime-process-data ,process) "")
+                     (mapc (lambda (,line-name) ,@body) '("")))
            (setf (shime-process-data ,process) ,remaining-input))
 
          (when (not (string= ,remaining-input ""))
-	   (shime-delete-line)
-	   (shime-buffer-echo
-	    buffer
-	    ;; Colorize the prompt with `shime-ghci-prompt' and set
-	    ;; it to read-only.  Set `rear-nonsticky' so properties
-	    ;; don't bleed onto user input.
-	    (if (string-match shime-ghci-prompt-regex ,remaining-input)
-		(let ((prompt (substring ,remaining-input
-					 (match-beginning 0)
-					 (match-end 0)))
-		      (rest (substring ,remaining-input (match-end 0))))
-		  (concat (propertize prompt
-				      'face 'shime-ghci-prompt
-				      'read-only t
-				      'rear-nonsticky t)
-			  rest))
-	      ,remaining-input)))))))
+           (shime-delete-line)
+           (shime-buffer-echo
+            buffer
+            ;; Colorize the prompt with `shime-ghci-prompt' and set
+            ;; it to read-only.  Set `rear-nonsticky' so properties
+            ;; don't bleed onto user input.
+            (if (string-match shime-ghci-prompt-regex ,remaining-input)
+                (let ((prompt (substring ,remaining-input
+                                         (match-beginning 0)
+                                         (match-end 0)))
+                      (rest (substring ,remaining-input (match-end 0))))
+                  (concat (propertize prompt
+                                      'face 'shime-ghci-prompt
+                                      'read-only t
+                                      'rear-nonsticky t)
+                          rest))
+              ,remaining-input)))))))
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
@@ -837,8 +837,8 @@ current session GHCi process."
 If BUFFER is nil, use the current buffer."
   (with-current-buffer (or buffer (current-buffer))
     (if (and (default-boundp 'shime-ghci-process-of-buffer)
-	     (assoc shime-ghci-process-of-buffer shime-processes))
-	shime-ghci-process-of-buffer
+             (assoc shime-ghci-process-of-buffer shime-processes))
+        shime-ghci-process-of-buffer
       (setq shime-ghci-process-of-buffer nil)
       (make-local-variable 'shime-ghci-process-of-buffer)
       (shime-choose-buffer-ghci-process-or-default))))
@@ -1148,9 +1148,9 @@ If BUFFER is nil, use the current buffer."
   (let ((session (assoc name shime-sessions)))
     (when session
       (mapc (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
-	    (shime-session-buffers (cdr session)))
+            (shime-session-buffers (cdr session)))
       (mapc (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
-	    (shime-session-processes (cdr session)))
+            (shime-session-processes (cdr session)))
       (setf (shime-session-active-p (cdr session)) nil)
       (setq shime-sessions
             (delete-if (lambda (keyvalue)
