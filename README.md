@@ -46,7 +46,7 @@ choose which to kill. A session can have many buffers and many
 processes, so just killing a buffer doesn't make much sense unless I
 add a "master buffer" concept in future versions.
 
-## Loading files
+## Loading files and using Cabal
 
 Every buffer has an associated session and an associated GHCi and
 Cabal process. When you first run
