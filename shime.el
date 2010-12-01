@@ -132,6 +132,7 @@
         (choose-session . "Choose session: ")
         (cabal-command-finished . "Cabal command finished.")
         (choose-buffer-ghci-process . "Choose GHCi process: ")
+        (choose-buffer-cabal-process . "Choose Cabal process: ")
         (needed-a-session . "The command needed a Shime session. Aborted.")
         (buffer-session-was-set
          . (lambda (session-name)
@@ -405,7 +406,7 @@ object and attach itself to it."
   "Prompt to set the root load path (defaults to current directory)."
   (shime-with-buffer-ghci-process
    process
-   (shime-prompt-load-root process shime-load-root)))
+   (shime-prompt-load-root process (shime-process-pwd process))))
 
 (defun shime-choose-cabal-root ()
   (interactive)
