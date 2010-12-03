@@ -359,7 +359,7 @@ object and attach itself to it."
       (with-current-buffer (shime-buffer-buffer buffer)
         (kill-all-local-variables)
         (use-local-map shime-mode-map)
-        (setq major-mode-shime-mode)
+        (setq major-mode shime-mode)
         (setq mode-name "Shime")
         (run-mode-hooks 'shime-mode-hook))
       buffer)))
