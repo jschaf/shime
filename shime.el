@@ -555,7 +555,8 @@ object and attach itself to it."
            (unless (shime-relative-to (shime-process-pwd process) file-dir)
              (when (shime-ask-change-root)
                (shime-prompt-load-root process file-dir)))
-           (shime-echo-command proc-buffer (format "load %s\n" file))
+           (shime-echo-command proc-buffer
+                               (format "load %s\n" (shime-path-filename file)))
            (shime-ghci-send-expression process ":set -fobject-code")
            (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
