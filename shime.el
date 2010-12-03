@@ -105,6 +105,11 @@
   :group 'shime
   :type 'boolean)
 
+(defcustom shime-display-dir-on-load nil
+  "Display the directory of the file name being loaded."
+  :group 'shime
+  :type 'boolean)
+
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -555,8 +560,13 @@ object and attach itself to it."
            (unless (shime-relative-to (shime-process-pwd process) file-dir)
              (when (shime-ask-change-root)
                (shime-prompt-load-root process file-dir)))
-           (shime-echo-command proc-buffer
-                               (format "load %s\n" (shime-path-filename file)))
+           (let ((file-load-display
+                  (if (shime-relative-to (shime-process-pwd process) file-dir)
+                      (if shime-display-dir-on-load
+                          file
+                          (shime-path-filename file))
+                    file)))
+            (shime-echo-command proc-buffer (format "load %s\n" file-load-display)))
            (shime-ghci-send-expression process ":set -fobject-code")
            (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
