@@ -203,8 +203,8 @@ If cabal doesn't exist, `shime-cabal-commands' is left
 unchanged."
   (with-temp-buffer
     (insert (shell-command-to-string (concat
-				      shime-cabal-program-path
-				      " --help")))
+                                      shime-cabal-program-path
+                                      " --help")))
     (goto-char (point-min))
 
     (when (re-search-forward "cabal" nil t 2)
@@ -406,16 +406,14 @@ object and attach itself to it."
 (defun shime-choose-load-root ()
   "Prompt to set the root load path (defaults to current directory)."
   (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (shime-prompt-load-root process shime-load-root)))
+  (shime-with-buffer-ghci-process process
+    (shime-prompt-load-root process shime-load-root)))
 
 (defun shime-choose-cabal-root ()
   "Prompt to set the root Cabal path (defaults to current directory)."
   (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (shime-prompt-cabal-root process "")))
+  (shime-with-buffer-ghci-process process
+    (shime-prompt-cabal-root process "")))
 
 (defun shime-cabal-configure ()
   "Run the Cabal configure command."
@@ -469,27 +467,25 @@ object and attach itself to it."
 (defun shime-choose-buffer-ghci-process-or-default ()
   "Choose the buffer for this buffer or just default if there's only one buffer."
   (interactive)
-  (shime-with-session
-   session
-   (if (= (length (shime-session-ghci-processes session)) 1)
-       (progn (setq shime-ghci-process-of-buffer
-                    (shime-process-name
-                     (car (shime-session-ghci-processes session))))
-              (message (funcall (shime-string
-                                 'buffer-ghci-process-was-set-default)
-                                shime-ghci-process-of-buffer))
-              shime-ghci-process-of-buffer)
-     (shime-choose-buffer-ghci-process))))
+  (shime-with-session session
+    (if (= (length (shime-session-ghci-processes session)) 1)
+        (progn (setq shime-ghci-process-of-buffer
+                     (shime-process-name
+                      (car (shime-session-ghci-processes session))))
+               (message (funcall (shime-string
+                                  'buffer-ghci-process-was-set-default)
+                                 shime-ghci-process-of-buffer))
+               shime-ghci-process-of-buffer)
+      (shime-choose-buffer-ghci-process))))
 
 (defun shime-choose-buffer-ghci-process ()
   "Choose the buffer for this buffer."
   (interactive)
-  (shime-with-session
-   session
-   (setq shime-ghci-process-of-buffer
-         (ido-completing-read (shime-string 'choose-buffer-ghci-process)
-                              (mapcar 'shime-process-name
-                                      (shime-session-ghci-processes session)))))
+  (shime-with-session session
+    (setq shime-ghci-process-of-buffer
+          (ido-completing-read (shime-string 'choose-buffer-ghci-process)
+                               (mapcar 'shime-process-name
+                                       (shime-session-ghci-processes session)))))
   (message (funcall (shime-string 'buffer-ghci-process-was-set)
                     shime-ghci-process-of-buffer))
   shime-ghci-process-of-buffer)
@@ -497,27 +493,25 @@ object and attach itself to it."
 (defun shime-choose-buffer-cabal-process-or-default ()
   "Choose the buffer for this buffer or just default if there's only one buffer."
   (interactive)
-  (shime-with-session
-   session
-   (if (= (length (shime-session-cabal-processes session)) 1)
-       (progn (setq shime-cabal-process-of-buffer
-                    (shime-process-name
-                     (car (shime-session-cabal-processes session))))
-              (message (funcall (shime-string
-                                 'buffer-cabal-process-was-set-default)
-                                shime-cabal-process-of-buffer))
-              shime-cabal-process-of-buffer)
-     (shime-choose-buffer-cabal-process))))
+  (shime-with-session session
+    (if (= (length (shime-session-cabal-processes session)) 1)
+        (progn (setq shime-cabal-process-of-buffer
+                     (shime-process-name
+                      (car (shime-session-cabal-processes session))))
+               (message (funcall (shime-string
+                                  'buffer-cabal-process-was-set-default)
+                                 shime-cabal-process-of-buffer))
+               shime-cabal-process-of-buffer)
+      (shime-choose-buffer-cabal-process))))
 
 (defun shime-choose-buffer-cabal-process ()
   "Choose the buffer for this buffer."
   (interactive)
-  (shime-with-session
-   session
-   (setq shime-cabal-process-of-buffer
-         (ido-completing-read (shime-string 'choose-buffer-cabal-process)
-                              (mapcar 'shime-process-name
-                                      (shime-session-cabal-processes session)))))
+  (shime-with-session session
+    (setq shime-cabal-process-of-buffer
+          (ido-completing-read (shime-string 'choose-buffer-cabal-process)
+                               (mapcar 'shime-process-name
+                                       (shime-session-cabal-processes session)))))
   (message (funcall (shime-string 'buffer-cabal-process-was-set)
                     shime-cabal-process-of-buffer))
   shime-cabal-process-of-buffer)
@@ -525,16 +519,13 @@ object and attach itself to it."
 (defun shime-cabal-command (cmd)
   "Run a cabal command."
   (interactive)
-  (shime-with-buffer-cabal-process
-   process
-   (progn
-     (when (buffer-modified-p) (save-buffer))
-     (if (shime-process-pwd process)
-         (shime-cabal-send-cmd process cmd)
-       (progn (shime-prompt-cabal-root
-               process
-               (file-name-directory (buffer-file-name)))
-              (shime-cabal-command cmd))))))
+  (shime-with-buffer-cabal-process process
+    (when (buffer-modified-p) (save-buffer))
+    (if (shime-process-pwd process)
+        (shime-cabal-send-cmd process cmd)
+      (shime-prompt-cabal-root process
+                               (file-name-directory (buffer-file-name)))
+      (shime-cabal-command cmd))))
 
 (defun shime-echo-command (buffer str)
   "Insert STR into BUFFER with the shime-interactive-command face."
@@ -547,22 +538,21 @@ object and attach itself to it."
   "Load the file associated with the current buffer with the
 current session GHCi process."
   (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (let* ((file (buffer-file-name))
-          (file-dir (file-name-directory file))
-          (proc-buffer (shime-process-buffer process)))
-     (when (buffer-modified-p) (save-buffer))
-     (if (shime-process-pwd process)
-         (progn
-           (unless (shime-relative-to (shime-process-pwd process) file-dir)
-             (when (shime-ask-change-root)
-               (shime-prompt-load-root process file-dir)))
-           (shime-echo-command proc-buffer (format "load %s\n" file))
-           (shime-ghci-send-expression process ":set -fobject-code")
-           (shime-ghci-send-expression process (concat ":load " file)))
-       (shime-set-load-root process file-dir)
-       (shime-load-file)))))
+  (shime-with-buffer-ghci-process process
+    (let* ((file (buffer-file-name))
+           (file-dir (file-name-directory file))
+           (proc-buffer (shime-process-buffer process)))
+      (when (buffer-modified-p) (save-buffer))
+      (if (shime-process-pwd process)
+          (progn
+            (unless (shime-relative-to (shime-process-pwd process) file-dir)
+              (when (shime-ask-change-root)
+                (shime-prompt-load-root process file-dir)))
+            (shime-echo-command proc-buffer (format "load %s\n" file))
+            (shime-ghci-send-expression process ":set -fobject-code")
+            (shime-ghci-send-expression process (concat ":load " file)))
+        (shime-set-load-root process file-dir)
+        (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -584,28 +574,27 @@ current session GHCi process."
 (defun shime-key-ret ()
   "Handle the return key press."
   (interactive)
-  (shime-with-buffer-ghci-process
-   process
-   (let ((proc-buffer (shime-process-buffer process))
-	 (prompt-p (save-excursion
-		     (goto-char (line-beginning-position))
-                     (looking-at shime-ghci-prompt-regex)))
-	 (line (buffer-substring-no-properties
-		(match-end 0)
-		(line-end-position))))
-     (if prompt-p
-         (progn
-           (shime-history-ensure-created)
-           (unless (string= "" line)
-             (push line shime-history-of-buffer)
-             (setq shime-history-index-of-buffer -1))
-           (shime-buffer-ghci-send-expression proc-buffer process line))
-       ;; If we're not at a prompt, send an empty line to
-       ;; the REPL, this'll trigger it sending a new prompt,
-       ;; which is probably what we want. At least in the
-       ;; case of M-x erase buffer.
-       ;; TODO: take another look at this to re-evaluate.
-       (shime-buffer-ghci-send-expression proc-buffer process "")))))
+  (shime-with-buffer-ghci-process process
+    (let ((proc-buffer (shime-process-buffer process))
+          (prompt-p (save-excursion
+                      (goto-char (line-beginning-position))
+                      (looking-at shime-ghci-prompt-regex)))
+          (line (buffer-substring-no-properties
+                 (match-end 0)
+                 (line-end-position))))
+      (if prompt-p
+          (progn
+            (shime-history-ensure-created)
+            (unless (string= "" line)
+              (push line shime-history-of-buffer)
+              (setq shime-history-index-of-buffer -1))
+            (shime-buffer-ghci-send-expression proc-buffer process line))
+        ;; If we're not at a prompt, send an empty line to
+        ;; the REPL, this'll trigger it sending a new prompt,
+        ;; which is probably what we want. At least in the
+        ;; case of M-x erase buffer.
+        ;; TODO: take another look at this to re-evaluate.
+        (shime-buffer-ghci-send-expression proc-buffer process "")))))
 
 (defun shime-key-tab ()
   "Handle the tab key press."
