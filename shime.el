@@ -8,7 +8,7 @@
 ;; A major mode for interacting with a Haskell inferior process.
 ;;
 ;; * Currently only supports GHCi.
-;; * Not tested on OS X or Windows.  Should work on both.
+;; * Not tested on OS X or Windows. Should work on both.
 ;;
 ;;; License:
 ;;
@@ -106,6 +106,11 @@
   :group 'shime
   :type 'boolean)
 
+(defcustom shime-display-dir-on-load nil
+  "Display the directory of the file name being loaded."
+  :group 'shime
+  :type 'boolean)
+
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -133,6 +138,7 @@
         (choose-session . "Choose session: ")
         (cabal-command-finished . "Cabal command finished.")
         (choose-buffer-ghci-process . "Choose GHCi process: ")
+        (choose-buffer-cabal-process . "Choose Cabal process: ")
         (needed-a-session . "The command needed a Shime session. Aborted.")
         (buffer-session-was-set
          . (lambda (session-name)
@@ -407,7 +413,7 @@ object and attach itself to it."
   "Prompt to set the root load path (defaults to current directory)."
   (interactive)
   (shime-with-buffer-ghci-process process
-    (shime-prompt-load-root process shime-load-root)))
+    (shime-prompt-load-root process (shime-process-pwd process))))
 
 (defun shime-choose-cabal-root ()
   "Prompt to set the root Cabal path (defaults to current directory)."
@@ -448,7 +454,7 @@ object and attach itself to it."
   (interactive)
   (shime-with-any-session
    (if (= (length shime-sessions) 1)
-       (progn (setq shime-session-of-buffer (caar shime-sessions))
+       (progn (setq shime-session-of-buffer (car (car shime-sessions)))
               (message (funcall (shime-string 'buffer-session-was-set-default)
                                 shime-session-of-buffer))
               shime-session-of-buffer)
@@ -517,7 +523,7 @@ object and attach itself to it."
   shime-cabal-process-of-buffer)
 
 (defun shime-cabal-command (cmd)
-  "Run a cabal command."
+  "Run cabal CMD."
   (interactive)
   (shime-with-buffer-cabal-process process
     (when (buffer-modified-p) (save-buffer))
@@ -536,23 +542,30 @@ object and attach itself to it."
 
 (defun shime-load-file ()
   "Load the file associated with the current buffer with the
-current session GHCi process."
+  current session GHCi process."
   (interactive)
-  (shime-with-buffer-ghci-process process
-    (let* ((file (buffer-file-name))
-           (file-dir (file-name-directory file))
-           (proc-buffer (shime-process-buffer process)))
-      (when (buffer-modified-p) (save-buffer))
-      (if (shime-process-pwd process)
-          (progn
-            (unless (shime-relative-to (shime-process-pwd process) file-dir)
-              (when (shime-ask-change-root)
-                (shime-prompt-load-root process file-dir)))
-            (shime-echo-command proc-buffer (format "load %s\n" file))
-            (shime-ghci-send-expression process ":set -fobject-code")
-            (shime-ghci-send-expression process (concat ":load " file)))
-        (shime-set-load-root process file-dir)
-        (shime-load-file)))))
+  (shime-with-buffer-ghci-process
+   process
+   (let* ((file (buffer-file-name))
+          (file-dir (file-name-directory file))
+          (proc-buffer (shime-process-buffer process)))
+     (when (buffer-modified-p) (save-buffer))
+     (if (shime-process-pwd process)
+         (progn
+           (unless (shime-relative-to (shime-process-pwd process) file-dir)
+             (when (shime-ask-change-root)
+               (shime-prompt-load-root process file-dir)))
+           (let ((file-load-display
+                  (if (shime-relative-to (shime-process-pwd process) file-dir)
+                      (if shime-display-dir-on-load
+                          file
+                          (shime-path-filename file))
+                    file)))
+            (shime-echo-command proc-buffer (format "load %s\n" file-load-display)))
+           (shime-ghci-send-expression process ":set -fobject-code")
+           (shime-ghci-send-expression process (concat ":load " file)))
+       (shime-set-load-root process file-dir)
+       (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
@@ -734,7 +747,7 @@ evaluate BODY.
     (make-local-variable 'shime-history-index-of-buffer)))
 
 (defun shime-history-toggle (direction)
-  "Toggle the prompt contents by cycling the history in DIRECTION."
+  "Toggle the prompt contents by cycling the history."
   (shime-history-ensure-created)
   (setq shime-history-index-of-buffer
         (+ shime-history-index-of-buffer
@@ -832,14 +845,17 @@ If BUFFER is nil, use the current buffer."
 (defun shime-get-buffer-cabal-process ()
   "Get the Cabal process of the current buffer."
   (if (and (default-boundp 'shime-cabal-process-of-buffer)
+           shime-cabal-process-of-buffer
            (assoc shime-cabal-process-of-buffer shime-processes))
       shime-cabal-process-of-buffer
-    (progn (set (make-local-variable 'shime-cabal-process-of-buffer) nil)
+    (progn (setq shime-cabal-process-of-buffer nil)
+           (make-local-variable 'shime-cabal-process-of-buffer)
            (shime-choose-buffer-cabal-process-or-default))))
 
 (defun shime-get-buffer-session ()
   "Get the session of the current buffer."
   (if (and (default-boundp 'shime-session-of-buffer)
+           shime-session-of-buffer
            (assoc shime-session-of-buffer shime-sessions))
       shime-session-of-buffer
     (progn (setq shime-session-of-buffer nil)
@@ -934,7 +950,7 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-detach-buffer-from-session (buffer session)
   "Bidirectionally detach a buffer from a session."
-  (mapc (lambda (process)
+  (mapcar (lambda (process)
             (shime-detach-process-from-buffer process buffer))
           (shime-buffer-processes buffer))
   (setf (shime-session-buffers session)
@@ -1213,8 +1229,8 @@ If BUFFER is nil, use the current buffer."
    (concat ":cd " root)))
 
 (defun shime-prompt-load-root (process def)
-  "Prompt to set the root path with a default value."
   (interactive)
+  "Prompt to set the root path with a default value."
   (shime-set-load-root
    process
    (read-from-minibuffer (shime-string 'new-load-root)
