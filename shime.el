@@ -628,8 +628,6 @@ evaluate BODY.
   `(let ((,var ,value))
      (when ,var ,@body)))
 
-(put 'when-let 'lisp-indent-function 1)
-
 (defmacro shime-with-process-buffered-lines (process input line-name &rest body)
   (let ((lines (gensym))
         (parsed-lines (gensym))
@@ -671,8 +669,6 @@ evaluate BODY.
                           rest))
               ,remaining-input)))))))
 
-(put 'shime-with-process-buffered-lines 'lisp-indent-function 3)
-
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
   `(let ((process (assoc (process-name ,process) shime-processes)))
@@ -689,8 +685,6 @@ evaluate BODY.
              (let ((,session-name session)
                    (,process-name (cdr process)))
                ,@body)))))))
-
-(put 'shime-with-process-session 'lisp-indent-function 3)
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -713,8 +707,6 @@ evaluate BODY.
               ,@body)
           (message (shime-string 'needed-a-session)))))))
 
-(put 'shime-with-session 'lisp-indent-function 1)
-
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-ghci-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
@@ -723,8 +715,6 @@ evaluate BODY.
          (let ((,name (cdr ,cons)))
            ,@body)))))
 
-(put 'shime-with-buffer-ghci-process 'lisp-indent-function 1)
-
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-cabal-process (name &rest body)
   (let ((sym (gensym)) (cons (gensym)))
@@ -732,8 +722,6 @@ evaluate BODY.
        (when-let (,cons (assoc ,sym shime-processes))
          (let ((,name (cdr ,cons)))
            ,@body)))))
-
-(put 'shime-with-buffer-cabal-process 'lisp-indent-function 1)
 
 ;; Procedures
 
