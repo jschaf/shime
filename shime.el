@@ -641,6 +641,17 @@ evaluate BODY.
   `(let ((,var ,value))
      (when ,var ,@body)))
 
+
+(defmacro* if-let ((var value) then &rest else)
+  "Evaluate VALUE, and if the result is non-nil bind it to VAR and
+evaluate THEN, else evaluate ELSE.
+
+\(fn (VAR VALUE) THEN &rest ELSE)"
+  `(let ((,var ,value))
+     (if ,var
+         ,then
+       ,@else)))
+
 (defmacro shime-with-process-buffered-lines (process input line-name &rest body)
   (let ((lines (gensym))
         (parsed-lines (gensym))
@@ -684,20 +695,18 @@ evaluate BODY.
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
-  `(let ((process (assoc (process-name ,process) shime-processes)))
-     (if (not process)
-         (message (funcall (shime-string 'recieved-data-from-rogue-process)
-                           (process-name ,process)))
-       (let ((session (shime-process-session (cdr process))))
-         (if (not session)
-             (message (funcall (shime-string 'recieved-data-from-unattached-process)
-                               (process-name ,process)))
+  `(if-let (process (assoc (process-name ,process) shime-processes))
+       (if-let (session (shime-process-session (cdr process)))
            (if (not (shime-session-active-p session))
                (message (funcall (shime-string 'recieved-data-for-inactive-session)
                                  (process-name ,process) ""))
              (let ((,session-name session)
                    (,process-name (cdr process)))
-               ,@body)))))))
+               ,@body))
+         (message (funcall (shime-string 'recieved-data-from-unattached-process)
+                           (process-name ,process))))
+     (message (funcall (shime-string 'recieved-data-from-rogue-process)
+                       (process-name ,process)))))
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -777,28 +786,25 @@ evaluate BODY.
         (delete-region p end)))))
 
 (defun shime-get-shime-buffer-ghci-process (buffer)
-  (let ((process (shime-buffer-ghci-process buffer)))
-    (if process
-        process
-      (if (null (shime-buffer-processes buffer))
-          (progn (message (shime-string 'buffer-no-processes))
-                 nil)
-        (let ((ghci-processes
-               (remove-if (lambda (process)
-                            (not (eq (shime-process-type process)
-                                     'ghci)))
-                          (shime-buffer-processes buffer))))
-          (if (= 1 (length ghci-processes))
-              (progn (setf (shime-buffer-ghci-process buffer) (car ghci-processes))
-                     (car ghci-processes))
-            (let ((process-name (ido-completing-read
-                                 (shime-string 'choose-buffer-process)
-                                 (mapcar 'shime-process-name ghci-processes))))
-              (let ((process (assoc process-name shime-processes)))
-                (if process
-                    (progn (setf (shime-buffer-ghci-process buffer) (cdr process))
-                           (cdr process))
-                  (shime-get-shime-buffer-ghci-process buffer))))))))))
+  (if-let (process (shime-buffer-ghci-process buffer))
+      process
+    (if (null (shime-buffer-processes buffer))
+        (prog1 nil (message (shime-string 'buffer-no-processes)))
+      (let ((ghci-processes
+             (remove-if (lambda (process)
+                          (not (eq (shime-process-type process)
+                                   'ghci)))
+                        (shime-buffer-processes buffer))))
+        (if (= 1 (length ghci-processes))
+            (progn (setf (shime-buffer-ghci-process buffer) (car ghci-processes))
+                   (car ghci-processes))
+          (let ((process-name (ido-completing-read
+                               (shime-string 'choose-buffer-process)
+                               (mapcar 'shime-process-name ghci-processes))))
+            (if-let (process (assoc process-name shime-processes))
+                (progn (setf (shime-buffer-ghci-process buffer) (cdr process))
+                       (cdr process))
+              (shime-get-shime-buffer-ghci-process buffer))))))))
 
 (defun shime-choose-session ()
   "Ask the user to choose from the list of sessions."
@@ -1200,15 +1206,14 @@ If BUFFER is nil, use the current buffer."
 
 (defun* shime-string (n &key (lang shime-default-language))
   "Look-up a string with the current language."
-  (let ((entry (assoc n (assoc lang shime-languages))))
-    (if entry
-        (cdr entry)
-      (error (concat
-              "Unable to retrieve language entry for "
-              (symbol-name n)
-              " from language set "
-              lang
-              ".")))))
+  (if-let (entry (assoc n (assoc lang shime-languages)))
+      (cdr entry)
+    (error (concat
+            "Unable to retrieve language entry for "
+            (symbol-name n)
+            " from language set "
+            lang
+            "."))))
 
 ;; IO/paths/filesytem
 
