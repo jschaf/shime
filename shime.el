@@ -638,6 +638,7 @@ object and attach itself to it."
 evaluate BODY.
 
 \(fn (VAR VALUE) &rest BODY)"
+  (declare (indent 1))
   `(let ((,var ,value))
      (when ,var ,@body)))
 
@@ -647,12 +648,14 @@ evaluate BODY.
 evaluate THEN, else evaluate ELSE.
 
 \(fn (VAR VALUE) THEN &rest ELSE)"
+  (declare (indent 2))
   `(let ((,var ,value))
      (if ,var
          ,then
        ,@else)))
 
 (defmacro shime-with-process-buffered-lines (process input line-name &rest body)
+  (declare (indent 3))
   (let ((lines (gensym))
         (parsed-lines (gensym))
         (remaining-input (gensym)))
@@ -695,6 +698,7 @@ evaluate THEN, else evaluate ELSE.
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
+  (declare (indent 3))
   `(if-let (process (assoc (process-name ,process) shime-processes))
        (if-let (session (shime-process-session (cdr process)))
            (if (not (shime-session-active-p session))
@@ -710,6 +714,7 @@ evaluate THEN, else evaluate ELSE.
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
+  (declare (indent 0))
   `(if (null shime-sessions)
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
@@ -719,6 +724,7 @@ evaluate THEN, else evaluate ELSE.
 
 (defmacro shime-with-session (name &rest body)
   "The code this call needs a session. Ask to create one if needs be."
+  (declare (indent 1))
   `(shime-with-any-session
     (if (= 1 (length shime-sessions))
         (let ((,name (cdar shime-sessions)))
@@ -731,6 +737,7 @@ evaluate THEN, else evaluate ELSE.
 
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-ghci-process (name &rest body)
+  (declare (indent 0))
   (let ((sym (gensym)) (cons (gensym)))
     `(when-let (,sym (shime-get-buffer-ghci-process))
        (when-let (,cons (assoc ,sym shime-processes))
@@ -739,6 +746,7 @@ evaluate THEN, else evaluate ELSE.
 
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-cabal-process (name &rest body)
+  (declare (indent 1))
   (let ((sym (gensym)) (cons (gensym)))
     `(when-let (,sym (shime-get-buffer-cabal-process))
        (when-let (,cons (assoc ,sym shime-processes))
