@@ -106,6 +106,17 @@
   :group 'shime
   :type 'boolean)
 
+(defcustom shime-collapse-packages t
+  "Collapse GHCi errors onto a single line."
+  :group 'shime
+  :type 'boolean)
+
+(defcustom shime-show-package-versions nil
+  "Show Hackage version numbers for
+packages (e.g. array-0.3.0.1)."
+  :group 'shime
+  :type 'boolean)
+
 (defcustom shime-display-dir-on-load nil
   "Display the directory of the file name being loaded."
   :group 'shime
