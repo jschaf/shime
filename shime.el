@@ -1083,43 +1083,88 @@ If BUFFER is nil, use the current buffer."
   "Face for the Shime GHCi prompt."
   :group 'shime)
 
-(defun shime-ghci-filter-handle-input (session process input)
-  "Handle input from the process on a given session and process."
-  (shime-with-process-buffered-lines
-   process input line
-   (let* ((err "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
-          (block-data (shime-process-block-data process))
-          (block-data-p (not (string= block-data "")))
-          (was-error nil)
-          (block-data-flat
-           (if shime-collapse-errors
-               (replace-regexp-in-string
-                "[\r\n ]+" " "
-                (replace-regexp-in-string "\nIn the.+$" "" block-data))
-             block-data))
-          (warning-match (string-match "^.+?:[0-9]+:[0-9]+: Warning" block-data-flat)))
-     (if (or (string-match err line)
-             (and block-data-p (string-match "^    " line)))
-         (setf (shime-process-block-data process)
-               (if (not (string= "" block-data))
-                   (concat block-data "\n" line)
-                 line))
-       (when block-data-p
-         (shime-buffer-echo buffer
-                            (propertize (concat block-data-flat)
-                                        'face (if warning-match
-                                                  'shime-ghci-warning
-                                                'shime-ghci-error)))
-         (shime-buffer-echo buffer "\n")
-         (setf (shime-process-block-data process) "")
-         (setq was-error t))
-       (shime-buffer-echo buffer (concat line (unless (looking-back "\n") "\n")))))))
+(defun shime-collapse-error-string (string)
+  "Collapse an error STRING if `shime-collapse-errors' is non-nil."
+  
+  (if shime-collapse-errors
+      (concat
+       (replace-regexp-in-string
+        "[\r\n ]+" " "
+        (replace-regexp-in-string "\nIn the.+$" "" string))
+       ;; add newlines so the prompt appears on a newline.
+       "\n")
+    string))
 
-(defun shime-trim-flat (str)
-  (replace-regexp-in-string
-   "[\r\n ]+"
-   " "
-   block-data))
+(defun shime-echo-block-data (buffer process)
+  "Echo the PROCESS block-data using appropriate properties and
+reset block-data and block-type."
+  (let ((block-data (shime-process-block-data process))
+        (block-type (shime-process-block-type process)))
+    (shime-buffer-echo
+     buffer
+     (case block-type
+       ('error (propertize (shime-collapse-error-string block-data)
+                           'face 'shime-ghci-error))
+
+       ('warning (propertize (shime-collapse-error-string block-data)
+                             'face 'shime-ghci-warning))
+       (otherwise block-data))))
+  (setf (shime-process-block-type process) nil
+        (shime-process-block-data process) ""))
+
+(defun shime-ghci-filter-handle-input (session process input)
+  "Handle and echo INPUT from PROCESS of SESSION."
+  (shime-with-process-buffered-lines process input line
+    (let* ((error-regexp "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
+           (warning-regexp "^.+?:[0-9]+:[0-9]+: Warning")
+           (block-type (shime-process-block-type process))
+           (block-data (shime-process-block-data process)))
+      (cond
+       ;; Prompt
+       ((string-match shime-ghci-prompt-regex line)
+        ;; Echo remaining block-data because a prompt means the
+        ;; previous action finished.
+        (shime-echo-block-data buffer process)
+        ;; Colorize the prompt with `shime-ghci-prompt' and set
+        ;; it to read-only to prevent accidental deletion.  Set
+        ;; `rear-nonsticky' so the properties don't bleed onto
+        ;; user input.
+        (shime-buffer-echo
+         buffer
+         (propertize line
+                     'face 'shime-ghci-prompt
+                     'read-only t
+                     'rear-nonsticky t)))
+       
+       ;; We hit a newline, so any error or warning is complete.
+       ((string-match "^\n$" line)
+        (shime-echo-block-data buffer process)
+        (shime-buffer-echo buffer line))
+
+       ;; Additional warning data
+       ((eq block-type 'warning)
+        (setf (shime-process-block-data process) (concat block-data line)))
+
+       ;; Additional error data
+       ((eq block-type 'error)
+        (setf (shime-process-block-data process) (concat block-data line)))
+       
+       ;; The start of a warning
+       ((string-match warning-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-type process) 'warning))
+
+       ;; The start of an error
+       ((or (string-match error-regexp line))
+        (setf (shime-process-block-data process) line
+              (shime-process-block-type process) 'error))
+
+       ;; Default
+       (t
+        ;; Finish displaying any block-data since it came before the
+        ;; current line.
+        (shime-echo-block-data buffer process)
+        (shime-buffer-echo buffer line))))))
 
 (defun shime-delete-line ()
   "Delete the current line."
