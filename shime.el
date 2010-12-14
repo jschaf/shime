@@ -657,47 +657,33 @@ evaluate THEN, else evaluate ELSE.
          ,then
        ,@else)))
 
+(defun shime-split-string-with-newlines (string &optional separators omit-nulls)
+  "`split-string', but append \"\n\" to each split but the last."
+  (let ((split (split-string string separators omit-nulls)))
+    (append (mapcar (lambda (str)
+                      (concat str "\n"))
+                    (butlast split))
+            (last split))))
+
 (defmacro shime-with-process-buffered-lines (process input line-name &rest body)
+  "Parse INPUT from PROCESS and run BODY on LINE-NAME."
   (declare (indent 3))
   (let ((lines (gensym))
         (parsed-lines (gensym))
         (remaining-input (gensym)))
     `(let* ((buffer (shime-process-buffer ,process))
-            (,lines (split-string (concat (shime-process-data ,process)
-                                          ,input)
-                                  "[\r\n]"))
-            (,parsed-lines (butlast ,lines))
-            (,remaining-input (car (or (last ,lines) '("")))))
+            (full-lines (concat (shime-process-data ,process)
+                                ,input))
+            ;; Keep newlines in the string so we know with certainity
+            ;; what GHCi returned.  Otherwise, we screw up expressions
+            ;; like `putStrLn "a\n\nb"' by collapsing the two
+            ;; newlines.
+            (,lines (shime-split-string-with-newlines
+                     full-lines
+                     "[\r\n]"
+                     nil)))
        (with-current-buffer (shime-buffer-buffer buffer)
-         (unless (or (null ,parsed-lines)
-                     (string= (shime-process-data ,process) ""))
-           (shime-delete-line))
-         (mapc (lambda (,line-name) ,@body)
-               ,parsed-lines)
-
-         (if (string-match shime-ghci-prompt-regex ,remaining-input)
-              (progn (setf (shime-process-data ,process) "")
-                     (mapc (lambda (,line-name) ,@body) '("")))
-           (setf (shime-process-data ,process) ,remaining-input))
-
-         (when (not (string= ,remaining-input ""))
-           (shime-delete-line)
-           (shime-buffer-echo
-            buffer
-            ;; Colorize the prompt with `shime-ghci-prompt' and set
-            ;; it to read-only.  Set `rear-nonsticky' so properties
-            ;; don't bleed onto user input.
-            (if (string-match shime-ghci-prompt-regex ,remaining-input)
-                (let ((prompt (substring ,remaining-input
-                                         (match-beginning 0)
-                                         (match-end 0)))
-                      (rest (substring ,remaining-input (match-end 0))))
-                  (concat (propertize prompt
-                                      'face 'shime-ghci-prompt
-                                      'read-only t
-                                      'rear-nonsticky t)
-                          rest))
-              ,remaining-input)))))))
+         (mapc (lambda (,line-name) ,@body) ,lines)))))
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
