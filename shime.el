@@ -1178,7 +1178,7 @@ If BUFFER is nil, use the current buffer."
 (defun shime-kill-buffer-by-name (name)
   "Kill a Shime buffer and detach it from the session, and detach any processes."
   (when-let (buffer (assoc name shime-buffers))
-    (when-let ((session (shime-buffer-session (cdr buffer))))
+    (when-let (session (shime-buffer-session (cdr buffer)))
       (shime-detach-buffer-from-session (cdr buffer) session))
     (setq shime-buffers
           (delete-if (lambda (keyvalue)
