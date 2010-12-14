@@ -276,7 +276,8 @@ unchanged."
           type
           pwd
           data
-          block-data)))
+          block-data
+          block-type)))
   program-path
   name
   session
@@ -287,7 +288,8 @@ unchanged."
   type
   pwd
   data
-  block-data)
+  block-data
+  block-type)
 
 (defstruct
   (shime-buffer
@@ -340,7 +342,8 @@ object and attach itself to it."
                   :type type
                   :pwd pwd
                   :data ""
-                  :block-data "")))
+                  :block-data ""
+                  :block-type nil)))
     (shime-start-process-for-shime-process process)
     (add-to-list 'shime-processes (cons name process))
     process))
