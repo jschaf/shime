@@ -1132,6 +1132,8 @@ If BUFFER is nil, use the current buffer."
   (cond ((or (string-match "finished" event)
              (string-match "segmentation fault" event))
          (shime-ghci-handle-finished process))
+        ((string-match "killed" event)
+         (message "shime process: `%s' killed successfully" process))
         (t (print process)
            (print event))))
 
