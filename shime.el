@@ -681,8 +681,9 @@ evaluate THEN, else evaluate ELSE.
   (declare (indent 3))
   (let ((lines (gensym))
         (parsed-lines (gensym))
-        (remaining-input (gensym)))
+        (last-line (gensym)))
     `(let* ((buffer (shime-process-buffer ,process))
+            ;; Grab stored text and the new input.
             (full-lines (concat (shime-process-data ,process)
                                 ,input))
             ;; Keep newlines in the string so we know with certainity
@@ -692,9 +693,21 @@ evaluate THEN, else evaluate ELSE.
             (,lines (shime-split-string-with-newlines
                      full-lines
                      "[\r\n]"
-                     nil)))
+                     nil))
+            (,last-line (car (or (last ,lines) '("")))))
        (with-current-buffer (shime-buffer-buffer buffer)
-         (mapc (lambda (,line-name) ,@body) ,lines)))))
+         (mapc (lambda (,line-name) ,@body)
+               (if (string-match shime-ghci-prompt-regex ,last-line)
+                   ;; We see the prompt, so we reset the process data
+                   ;; and pass the whole input to ,@body
+                   (progn
+                     (setf (shime-process-data ,process) "")
+                     ,lines)
+                 ;; We don't see the prompt, so there might still be
+                 ;; output from GHCi.  We store the last line until
+                 ;; next time.
+                 (setf (shime-process-data ,process) ,last-line)
+                 (butlast ,lines)))))))
 
 (defmacro shime-with-process-session (process process-name session-name &rest body)
   "Get the process object and session for a processes."
