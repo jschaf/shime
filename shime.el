@@ -1107,19 +1107,36 @@ If BUFFER is nil, use the current buffer."
   "Face for the Shime GHCi prompt."
   :group 'shime)
 
+(defface shime-ghci-package-load
+  '((t :inherit 'font-lock-comment-face))
+  "Face for the Shime GHCi package loading information."
+  :group 'shime)
+
 (defun shime-collapse-error-string (string)
   "Collapse an error STRING if `shime-collapse-errors' is non-nil."
-  
   (if shime-collapse-errors
       (concat
        (replace-regexp-in-string
         "[\r\n ]+" " "
         (replace-regexp-in-string "\nIn the.+$" "" string))
-       ;; add newlines so the prompt appears on a newline.
+       ;; add newlines since there is always a newline at the end of
+       ;; an error or warning
        "\n")
     string))
 
-(defun shime-echo-block-data (buffer process)
+(defun shime-collapse-package-string (string)
+  "Collapse a package STRING if `shime-collapse-packages' is non-nil.
+
+Displays version numbers according to
+`shime-show-package-versions'."
+  (if shime-collapse-packages
+      (let ((regexp "Loading package \\(\\([a-zA-z0-9-]+\\)\\( \\|-[0-9.]+\\)\\)")
+            (subexp (if shime-show-package-versions 1 2)))
+        (string-match regexp string)
+        (match-string subexp string))
+    string))
+
+(defun shime-echo-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
 reset block-data and block-type."
   (let ((block-data (shime-process-block-data process))
@@ -1127,13 +1144,33 @@ reset block-data and block-type."
     (shime-buffer-echo
      buffer
      (case block-type
+       ('plain block-data)
        ('error (propertize (shime-collapse-error-string block-data)
                            'face 'shime-ghci-error))
 
+
        ('warning (propertize (shime-collapse-error-string block-data)
                              'face 'shime-ghci-warning))
+
+       ('package-load-contd
+        (propertize
+         (format (concat ", %s"
+                         (unless (eq next-state 'package-load-contd) "\n"))
+                 (shime-collapse-package-string block-data))
+         'face 'shime-ghci-package-load))
+
+       ('package-load-start
+        (propertize
+         (format (concat "Loading package"
+                         (if (eq next-state 'package-load-contd)
+                             "s %s"
+                           " %s\n"))
+                 (shime-collapse-package-string block-data))
+         'face 'shime-ghci-package-load))
+
        (otherwise block-data))))
-  (setf (shime-process-block-type process) nil
+  
+  (setf (shime-process-block-type process) next-state
         (shime-process-block-data process) ""))
 
 (defun shime-ghci-filter-handle-input (session process input)
@@ -1141,6 +1178,7 @@ reset block-data and block-type."
   (shime-with-process-buffered-lines process input line
     (let* ((error-regexp "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
            (warning-regexp "^.+?:[0-9]+:[0-9]+: Warning")
+           (load-regexp "^Loading package")
            (block-type (shime-process-block-type process))
            (block-data (shime-process-block-data process)))
       (cond
@@ -1148,7 +1186,7 @@ reset block-data and block-type."
        ((string-match shime-ghci-prompt-regex line)
         ;; Echo remaining block-data because a prompt means the
         ;; previous action finished.
-        (shime-echo-block-data buffer process)
+        (shime-echo-block-data buffer process 'plain)
         ;; Colorize the prompt with `shime-ghci-prompt' and set
         ;; it to read-only to prevent accidental deletion.  Set
         ;; `rear-nonsticky' so the properties don't bleed onto
@@ -1162,7 +1200,7 @@ reset block-data and block-type."
        
        ;; We hit a newline, so any error or warning is complete.
        ((string-match "^\n$" line)
-        (shime-echo-block-data buffer process)
+        (shime-echo-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))
 
        ;; Additional warning data
@@ -1172,22 +1210,43 @@ reset block-data and block-type."
        ;; Additional error data
        ((eq block-type 'error)
         (setf (shime-process-block-data process) (concat block-data line)))
-       
+
+       ;; A second package load
+       ((eq block-type 'package-load-start)
+        (if (string-match load-regexp line)
+            (progn
+              (shime-echo-block-data buffer process 'package-load-contd)
+              (setf (shime-process-block-data process) line))
+          (shime-echo-block-data buffer process 'plain)))
+
+       ;; Multiple (>2) packages loads
+       ((eq block-type 'package-load-contd)
+        (if (string-match load-regexp line)
+            (progn
+              (shime-echo-block-data buffer process 'package-load-contd)
+              (setf (shime-process-block-data process) line))
+          (shime-echo-block-data buffer process 'plain)))
+
        ;; The start of a warning
        ((string-match warning-regexp line)
         (setf (shime-process-block-data process) line
               (shime-process-block-type process) 'warning))
 
        ;; The start of an error
-       ((or (string-match error-regexp line))
+       ((string-match error-regexp line)
         (setf (shime-process-block-data process) line
               (shime-process-block-type process) 'error))
+       
+       ;; The start of a package load.
+       ((string-match load-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-type process) 'package-load-start))
 
        ;; Default
        (t
         ;; Finish displaying any block-data since it came before the
         ;; current line.
-        (shime-echo-block-data buffer process)
+        (shime-echo-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))))))
 
 (defun shime-delete-line ()
