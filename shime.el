@@ -288,7 +288,7 @@ unchanged."
           pwd
           data
           block-data
-          block-type)))
+          block-state)))
   program-path
   name
   session
@@ -300,7 +300,7 @@ unchanged."
   pwd
   data
   block-data
-  block-type)
+  block-state)
 
 (defstruct
   (shime-buffer
@@ -354,7 +354,7 @@ object and attach itself to it."
                   :pwd pwd
                   :data ""
                   :block-data ""
-                  :block-type nil)))
+                  :block-state nil)))
     (shime-start-process-for-shime-process process)
     (add-to-list 'shime-processes (cons name process))
     process))
@@ -1138,12 +1138,12 @@ Displays version numbers according to
 
 (defun shime-echo-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
-reset block-data and block-type."
+reset block-data and block-state."
   (let ((block-data (shime-process-block-data process))
-        (block-type (shime-process-block-type process)))
+        (block-state (shime-process-block-state process)))
     (shime-buffer-echo
      buffer
-     (case block-type
+     (case block-state
        ('plain block-data)
        ('error (propertize (shime-collapse-error-string block-data)
                            'face 'shime-ghci-error))
@@ -1170,16 +1170,23 @@ reset block-data and block-type."
 
        (otherwise block-data))))
   
-  (setf (shime-process-block-type process) next-state
+  (setf (shime-process-block-state process) next-state
         (shime-process-block-data process) ""))
 
 (defun shime-ghci-filter-handle-input (session process input)
-  "Handle and echo INPUT from PROCESS of SESSION."
+  "Handle and echo INPUT from PROCESS of SESSION.
+
+State is stored in `shime-process-block-state' and is an enum of
+objects, either `plain', `warning', `error',
+`package-load-start', or `package-load-contd'.  This function
+acts as a state machine.  Output is handled by
+`shime-echo-block-data' which prints the
+`shime-process-block-data' correctly and sets the next state."
   (shime-with-process-buffered-lines process input line
     (let* ((error-regexp "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
            (warning-regexp "^.+?:[0-9]+:[0-9]+: Warning")
            (load-regexp "^Loading package")
-           (block-type (shime-process-block-type process))
+           (block-state (shime-process-block-state process))
            (block-data (shime-process-block-data process)))
       (cond
        ;; Prompt
@@ -1198,21 +1205,21 @@ reset block-data and block-type."
                      'read-only t
                      'rear-nonsticky t)))
        
-       ;; We hit a newline, so any error or warning is complete.
+       ;; We hit a lone newline, so any block-data is complete.
        ((string-match "^\n$" line)
         (shime-echo-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))
 
        ;; Additional warning data
-       ((eq block-type 'warning)
+       ((eq block-state 'warning)
         (setf (shime-process-block-data process) (concat block-data line)))
 
        ;; Additional error data
-       ((eq block-type 'error)
+       ((eq block-state 'error)
         (setf (shime-process-block-data process) (concat block-data line)))
 
        ;; A second package load
-       ((eq block-type 'package-load-start)
+       ((eq block-state 'package-load-start)
         (if (string-match load-regexp line)
             (progn
               (shime-echo-block-data buffer process 'package-load-contd)
@@ -1220,7 +1227,7 @@ reset block-data and block-type."
           (shime-echo-block-data buffer process 'plain)))
 
        ;; Multiple (>2) packages loads
-       ((eq block-type 'package-load-contd)
+       ((eq block-state 'package-load-contd)
         (if (string-match load-regexp line)
             (progn
               (shime-echo-block-data buffer process 'package-load-contd)
@@ -1230,17 +1237,17 @@ reset block-data and block-type."
        ;; The start of a warning
        ((string-match warning-regexp line)
         (setf (shime-process-block-data process) line
-              (shime-process-block-type process) 'warning))
+              (shime-process-block-state process) 'warning))
 
        ;; The start of an error
        ((string-match error-regexp line)
         (setf (shime-process-block-data process) line
-              (shime-process-block-type process) 'error))
+              (shime-process-block-state process) 'error))
        
        ;; The start of a package load.
        ((string-match load-regexp line)
         (setf (shime-process-block-data process) line
-              (shime-process-block-type process) 'package-load-start))
+              (shime-process-block-state process) 'package-load-start))
 
        ;; Default
        (t
