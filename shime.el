@@ -557,9 +557,9 @@ object and attach itself to it."
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
   (interactive)
-  (setq shime-sessions nil)
-  (setq shime-buffers nil)
-  (setq shime-processes nil))
+  (setq shime-sessions nil
+        shime-buffers nil
+        shime-processes nil))
 
 ;; Key binding handlers
 
