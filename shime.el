@@ -846,9 +846,9 @@ If BUFFER is nil, use the current buffer."
            shime-cabal-process-of-buffer
            (assoc shime-cabal-process-of-buffer shime-processes))
       shime-cabal-process-of-buffer
-    (progn (setq shime-cabal-process-of-buffer nil)
-           (make-local-variable 'shime-cabal-process-of-buffer)
-           (shime-choose-buffer-cabal-process-or-default))))
+    (setq shime-cabal-process-of-buffer nil)
+    (make-local-variable 'shime-cabal-process-of-buffer)
+    (shime-choose-buffer-cabal-process-or-default)))
 
 (defun shime-get-buffer-session ()
   "Get the session of the current buffer."
