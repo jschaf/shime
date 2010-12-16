@@ -1258,42 +1258,41 @@ acts as a state machine.  Output is handled by
 
 (defun shime-kill-session-by-name (name)
   "Kill a Shime session and all associated buffers and processes."
-  (when-let (session (assoc name shime-sessions))
-    (mapc (lambda (buffer) (shime-kill-buffer-by-name (shime-buffer-name buffer)))
-          (shime-session-buffers (cdr session)))
+  (let* ((session (assoc name shime-sessions))
+         (session-struct (cdr session)))
+    (mapc (lambda (buffer) (shime-kill-buffer-by-name
+                            (shime-buffer-name buffer)))
+          (shime-session-buffers session-struct))
     (mapc (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
-          (shime-session-processes (cdr session)))
-    (setf (shime-session-active-p (cdr session)) nil)
-    (setq shime-sessions
-          (delete-if (lambda (keyvalue)
-                       (string= (car keyvalue) name))
-                     shime-sessions))))
+          (shime-session-processes session-struct))
+    (setf (shime-session-active-p session-struct) nil)
+    (setq shime-sessions (shime-delete-assoc name shime-sessions))))
+
+(defun shime-assoc-delete (key alist)
+  "Delete from ALIST the first element whose car is `equal' to KEY.
+Return the modified alist."
+  (delq (assoc key alist) alist))
 
 (defun shime-kill-process-by-name (name)
-  "Kill a Shime process and detach it from its buffer, and detach from session."
-  (when-let (process (assoc name shime-processes))
-    (when-let (session (shime-process-session (cdr process)))
-      (shime-detach-process-from-session (cdr process) session)
-      (when-let (buffer (shime-process-buffer (cdr process)))
-        (shime-detach-process-from-buffer session buffer)))
-    (setq shime-processes
-          (delete-if (lambda (keyvalue)
-                       (string= (car keyvalue) name))
-                     shime-processes)))
-  (when (get-process name)
-    (delete-process name)))
+  "Kill a Shime process and detach it from its buffer, and detach
+from session."
+  (let* ((process (assoc name shime-processes))
+         (proc-struct (cdr process))
+         (session (and proc-struct (shime-process-session proc-struct)))
+         (buffer (and proc-struct (shime-process-buffer proc-struct))))
+    (when session (shime-detach-process-from-session proc-struct session))
+    (when buffer (shime-detach-process-from-buffer session buffer))
+    (setq shime-processes (shime-assoc-delete name shime-processes)))
+    (when (get-process name) (delete-process name)))
 
 (defun shime-kill-buffer-by-name (name)
   "Kill a Shime buffer and detach it from the session, and detach any processes."
-  (when-let (buffer (assoc name shime-buffers))
-    (when-let (session (shime-buffer-session (cdr buffer)))
-      (shime-detach-buffer-from-session (cdr buffer) session))
-    (setq shime-buffers
-          (delete-if (lambda (keyvalue)
-                       (string= (car keyvalue) name))
-                     shime-buffers)))
-  (when (get-buffer name)
-    (kill-buffer name)))
+  (let* ((buffer (assoc name shime-buffers))
+         (buffer-struct (cdr buffer))
+         (session (and buffer-struct (shime-buffer-session buffer-struct))))
+    (when session (shime-detach-buffer-from-session buffer-struct session))
+    (setq shime-buffers (shime-assoc-delete name shime-buffers))
+    (when (get-buffer name) (kill-buffer name))))
 
 (defun shime-buffer-echo (buffer str)
   "Echo something into the buffer of a buffer object."
