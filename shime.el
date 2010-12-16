@@ -96,7 +96,7 @@
   :group 'shime
   :type 'string)
 
-(defcustom shime-ghci-prompt-regex "^λ> "
+(defcustom shime-ghci-prompt-regex "^[^ \r\n\t]> "
   "Regex to match the prompt string."
   :group 'shime
   :type 'string)
