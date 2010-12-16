@@ -856,9 +856,9 @@ If BUFFER is nil, use the current buffer."
            shime-session-of-buffer
            (assoc shime-session-of-buffer shime-sessions))
       shime-session-of-buffer
-    (progn (setq shime-session-of-buffer nil)
-           (make-local-variable 'shime-session-of-buffer)
-           (shime-choose-buffer-session-or-default))))
+    (setq shime-session-of-buffer nil)
+    (make-local-variable 'shime-session-of-buffer)
+    (shime-choose-buffer-session-or-default)))
 
 (defun shime-maybe-start-session ()
   "Maybe start a new session."
