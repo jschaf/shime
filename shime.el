@@ -248,25 +248,14 @@ unchanged."
 ;; Data types
 
 (defstruct
+  shime-config
   "Config options for a Shime session."
-  (shime-config
-   (:constructor
-    make-shime-config
-    (&key (language shime-default-language)
-          name
-          cabal-load-path)))
   language 
   name)
 
 (defstruct
-  (shime-session
-   (:constructor
-    make-shime-session
-    (&key (name)
-          (config)
-          (processes '())
-          (buffers '())
-          (active-p nil))))
+  shime-session
+  "Session information."
   name
   config
   processes
@@ -274,21 +263,8 @@ unchanged."
   active-p)
 
 (defstruct
-  (shime-process
-   (:constructor
-    make-shime-process
-    (&key program-path
-          name
-          session
-          filter
-          sentinel
-          process
-          buffer
-          type
-          pwd
-          data
-          block-data
-          block-state)))
+  shime-process
+  "Process information, usually for cabal or GHCi."
   program-path
   name
   session
@@ -303,10 +279,8 @@ unchanged."
   block-state)
 
 (defstruct
-  (shime-buffer
-   (:constructor
-    make-shime-buffer
-    (&key name buffer session processes ghci-process)))
+  shime-buffer
+  "Buffer information."
   name
   buffer
   session
