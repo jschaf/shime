@@ -363,8 +363,7 @@ object and attach itself to it."
   (if (null shime-sessions)
       (shime-start-session
        :name shime-default-session-name
-       :config (shime-make-config shime-default-session-name
-                                  nil))
+       :config (shime-make-config shime-default-session-name))
     (shime-maybe-start-session)))
 
 (defun shime-start-named-session ()
