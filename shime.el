@@ -530,8 +530,7 @@ object and attach itself to it."
   "Load the file associated with the current buffer with the
   current session GHCi process."
   (interactive)
-  (shime-with-buffer-ghci-process
-   process
+  (shime-with-buffer-ghci-process process
    (let* ((file (buffer-file-name))
           (file-dir (file-name-directory file))
           (proc-buffer (shime-process-buffer process)))
