@@ -248,15 +248,15 @@ unchanged."
 ;; Data types
 
 (defstruct
+  "Config options for a Shime session."
   (shime-config
    (:constructor
     make-shime-config
     (&key (language shime-default-language)
           name
           cabal-load-path)))
-  language
-  name
-  cabal-load-path)
+  language 
+  name)
 
 (defstruct
   (shime-session
@@ -326,10 +326,9 @@ unchanged."
       (progn (add-to-list 'shime-sessions (cons name session))
              session))))
 
-(defun shime-make-config (name cabal-load-path)
+(defun shime-make-config (name)
   "Make a Shime config object."
-  (make-shime-config :name name
-                     :cabal-load-path cabal-load-path))
+  (make-shime-config :name name))
 
 (defun shime-start-process-for-shime-process (process)
   "Start a process using the details given in the shime-process
