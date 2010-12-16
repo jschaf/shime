@@ -575,8 +575,8 @@ object and attach itself to it."
                           file
                           (shime-path-filename file))
                     file)))
-            (shime-echo-command proc-buffer (format "load %s\n" file-load-display)))
-           (shime-ghci-send-expression process ":set -fobject-code")
+            (shime-echo-command proc-buffer
+                                (format "load %s\n" file-load-display)))
            (shime-ghci-send-expression process (concat ":load " file)))
        (shime-set-load-root process file-dir)
        (shime-load-file)))))
