@@ -107,7 +107,7 @@
   :type 'boolean)
 
 (defcustom shime-collapse-packages t
-  "Collapse GHCi errors onto a single line."
+  "Collapse GHCi package loads onto a single line."
   :group 'shime
   :type 'boolean)
 
