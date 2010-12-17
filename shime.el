@@ -817,6 +817,10 @@ evaluate THEN, else evaluate ELSE.
     (shime-attach-buffer-to-session session buffer)
     buffer))
 
+(defvar shime-ghci-process-of-buffer nil
+  "A buffer local variable of the associated GHCi process.")
+(make-variable-buffer-local 'shime-ghci-process-of-buffer)
+
 (defun shime-get-buffer-ghci-process (&optional buffer)
   "Get the GHCi process of BUFFER.
 If BUFFER is nil, use the current buffer."
@@ -824,8 +828,6 @@ If BUFFER is nil, use the current buffer."
     (if (and (default-boundp 'shime-ghci-process-of-buffer)
              (assoc shime-ghci-process-of-buffer shime-processes))
         shime-ghci-process-of-buffer
-      (setq shime-ghci-process-of-buffer nil)
-      (make-local-variable 'shime-ghci-process-of-buffer)
       (shime-choose-buffer-ghci-process-or-default))))
 
 (defun shime-get-buffer-cabal-process ()
