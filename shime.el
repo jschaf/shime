@@ -803,8 +803,7 @@ evaluate THEN, else evaluate ELSE.
   "Start a new GHCi process and attach to the given session."
   (let ((ghci-process (shime-make-ghci-process session
                                                name
-                                               shime-default-ghci-path
-                                               config)))
+                                               shime-default-ghci-path)))
     (shime-attach-process-to-session session ghci-process)
     (when buffer (shime-attach-process-to-buffer ghci-process buffer))
     ghci-process))
@@ -813,8 +812,7 @@ evaluate THEN, else evaluate ELSE.
   "Start a new Cabal process and attach to the given session."
   (let ((cabal-process (shime-make-cabal-process session
                                                  name
-                                                 shime-default-shell-path
-                                                 config)))
+                                                 shime-default-shell-path)))
     (shime-attach-process-to-session session cabal-process)
     (when buffer (shime-attach-process-to-buffer cabal-process buffer))
     cabal-process))
@@ -961,7 +959,7 @@ If BUFFER is nil, use the current buffer."
                (not (eq (shime-process-type process) 'cabal)))
              (shime-session-processes session)))
 
-(defun shime-make-cabal-process (session name program-path config)
+(defun shime-make-cabal-process (session name program-path)
   "Make a Cabal process."
   (shime-make-process
    session
@@ -1037,7 +1035,7 @@ If BUFFER is nil, use the current buffer."
   "Send an expression."
   (process-send-string (shime-process-process process) (concat expr "\n")))
 
-(defun shime-make-ghci-process (session name program-path config)
+(defun shime-make-ghci-process (session name program-path)
   "Make a GHCi process."
   (shime-make-process
    session
