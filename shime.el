@@ -338,7 +338,8 @@ object and attach itself to it."
       ;; TODO: Look up to see if there is an existing Shime
       ;; session for that buffer, if not, offer to delete or
       ;; usurp the buffer.
-      (error (concat "Unable to make Shime buffer named " name ", already exists."))
+      (error (format "Unable to make Shime buffer named %s, already exists"
+                     name))
     (let ((buffer (make-shime-buffer
                    :name name
                    :buffer (get-buffer-create name)
