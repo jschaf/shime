@@ -68,7 +68,9 @@
 
 \\{shime-mode-map}"
   :group 'shime
-  (setq next-error-function 'shime-next-error-function))
+  (setq next-error-function 'shime-next-error-function)
+  (make-local-variable 'shime-error-positions)
+  (make-local-variable 'shime-current-error-index))
 
 (add-hook 'shime-mode-hook 'shime-set-cabal-commands)
 
@@ -1096,22 +1098,81 @@ Displays version numbers according to
         (match-string subexp string))
     string))
 
+(defvar shime-error-positions '()
+  "List of error positions in the Shime buffer.")
+
+(defvar shime-current-error-index -1
+  "Marker to the location from where the next error will be found.
+The global commands next/previous/first-error/goto-error use this.")
+
+(defun shime-next-error-function (arg &optional reset)
+  "Advance to the next error message and visit the file where the error was.
+This is the value of `next-error-function' in Shime buffers."
+  (interactive "p")
+  (when reset
+    (setq shime-current-error-index 0))
+  (shime-with-buffer-ghci-process process
+    (let* ((buffer (shime-buffer-buffer (shime-process-buffer process)))
+           (len (length shime-error-positions))
+           (index (+ arg shime-current-error-index))
+           (pos (nth index shime-error-positions)))
+      (with-current-buffer buffer
+        ;; `with-selected-window' is needed to actually move the
+        ;; displayed point.  Apparently, there are two points for a
+        ;; buffer displayed in a window, the buffer's point and the
+        ;; window's point.  See a discussion of the issue at:
+        ;; http://www.mail-archive.com/emacs-devel@gnu.org/msg09292.html
+        (with-selected-window (display-buffer buffer nil 'visible)
+          (cond
+           ((zerop len)
+            (error "No errors to move too"))
+           ((>= index len)
+            (goto-char (car (last shime-error-positions)))
+            (setq shime-current-error-index (1- len))
+            (error "Moved past last error"))
+           ((< index 0)
+            (goto-char (car shime-error-positions))
+            (setq shime-current-error-index 0)
+            (error "Moved back before first error"))
+           (t
+            (goto-char pos)
+            (setq shime-current-error-index index)))))
+      (setq overlay-arrow-position (nth shime-current-error-index
+                                        shime-error-positions)))))
+
+(defun shime-add-error-location (buffer)
+  "Add the max point in BUFFER where we will insert an error.
+Use markers so the errors remain in the correct locations if the
+user makes any adjustments to the text."
+  (with-current-buffer (shime-buffer-buffer buffer)
+    (setq shime-error-positions (append shime-error-positions
+                                        (list (point-max-marker))))))
+
 (defun shime-echo-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
 reset block-data and block-state."
   (let ((block-data (shime-process-block-data process))
-        (block-state (shime-process-block-state process)))
+        (block-state (shime-process-block-state process))
+        (shime-buffer (shime-buffer-buffer buffer)))
     (shime-buffer-echo
      buffer
      (case block-state
        ('plain block-data)
-       ('error (propertize (shime-collapse-error-string block-data)
-                           'face 'shime-ghci-error))
 
-
-       ('warning (propertize (shime-collapse-error-string block-data)
-                             'face 'shime-ghci-warning))
-
+       ('error
+        (shime-add-error-location buffer)
+        (setq next-error-last-buffer (buffer-name shime-buffer))
+        (propertize (shime-collapse-error-string block-data)
+                    'face 'shime-ghci-error
+                    'mouse-face 'highlight))
+       
+       ('warning
+        (shime-add-error-location buffer)
+        (setq next-error-last-buffer (buffer-name shime-buffer))
+        (propertize (shime-collapse-error-string block-data)
+                    'face 'shime-ghci-warning
+                    'mouse-face 'highlight))
+       
        ('package-load-contd
         (propertize
          (format (concat ", %s"
@@ -1122,6 +1183,7 @@ reset block-data and block-state."
        ('package-load-start
         (propertize
          (format (concat "Loading package"
+                         ;; Get plurals correct.
                          (if (eq next-state 'package-load-contd)
                              "s %s"
                            " %s\n"))
