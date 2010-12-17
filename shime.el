@@ -778,11 +778,9 @@ evaluate THEN, else evaluate ELSE.
       process
     (if (null (shime-buffer-processes buffer))
         (prog1 nil (message (shime-string 'buffer-no-processes)))
-      (let ((ghci-processes
-             (remove-if (lambda (process)
-                          (not (eq (shime-process-type process)
-                                   'ghci)))
-                        (shime-buffer-processes buffer))))
+      (let ((ghci-processes (remove-if-not
+                              (lambda (p) (eq (shime-process-type p) 'ghci))
+                              (shime-buffer-processes buffer))))
         (if (= 1 (length ghci-processes))
             (progn (setf (shime-buffer-ghci-process buffer) (car ghci-processes))
                    (car ghci-processes))
