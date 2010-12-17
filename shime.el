@@ -128,9 +128,7 @@ packages (e.g. array-0.3.0.1)."
 (setq shime-strings-en
       `((process-died . "The Shime process died. Restart it? ")
         (program-not-found
-         . (lambda (name)
-             (concat "Unable to find Shime program \"" name
-                     "\", what's the right path? ")))
+         . "Unable to find Shime program '%s', what's the right path? ")
         (could-not-start . "Shime could not start.")
         (enter-session-name . "Session name: ")
         (kill-session . "Kill Shime session: ")
@@ -138,8 +136,7 @@ packages (e.g. array-0.3.0.1)."
         (kill-buffer . "Kill Shime buffer: ")
         (start-shime . "Start Shime? ")
         (ghci-died-restart?
-         . (lambda (name)
-             (concat "The GHCi process \"" name "\" ended. Restart it? ")))
+         . "The GHCi process '%s' ended. Restart it? ")
         (restarting-ghci-process . "Restarting GHCi process...")
         (buffer-no-processes . "No processes attached to this buffer!")
         (choose-buffer-process . "Choose buffer process: ")
@@ -151,40 +148,30 @@ packages (e.g. array-0.3.0.1)."
         (choose-buffer-ghci-process . "Choose GHCi process: ")
         (choose-buffer-cabal-process . "Choose Cabal process: ")
         (needed-a-session . "The command needed a Shime session. Aborted.")
-        (buffer-session-was-set
-         . (lambda (session-name)
-             (concat "Buffer session set to: " session-name)))
+        (buffer-session-was-set . "Buffer session set to: %s")
         (buffer-session-was-set-default
-         . (lambda (session-name)
-             (concat "Buffer session set to (default): " session-name
-                     " (Use `M-x shime-choose-buffer-session` to change.)")))
-        (buffer-ghci-process-was-set
-         . (lambda (process-name)
-             (concat "Buffer GHCi process set to: " process-name)))
+         . ,(concat "Buffer session set to (default): %s"
+                   " (Use `M-x shime-choose-buffer-session` to change.)"))
+        (buffer-ghci-process-was-set.  "Buffer GHCi process set to: %s")
         (buffer-ghci-process-was-set-default
-         . (lambda (process-name)
-             (concat "Buffer GHCi process set to (default): " process-name
-                     " (Use `M-x shime-choose-buffer-ghci-process` to change.)")))
+         . ,(concat "Buffer GHCi process set to (default): %s" 
+                   " (Use `M-x shime-choose-buffer-ghci-process` to change.)"))
         (buffer-cabal-process-was-set
-         . (lambda (process-name)
-             (concat "Buffer Cabal process set to: " process-name)))
+         . "Buffer Cabal process set to: %s")
         (buffer-cabal-process-was-set-default
-         . (lambda (process-name)
-             (concat "Buffer Cabal process set to (default): " process-name
-                     " (Use `M-x shime-choose-buffer-cabal-process` to change.)")))
+         . ,(concat "Buffer Cabal process set to (default): %s"
+                 " (Use `M-x shime-choose-buffer-cabal-process` to change.)"))
         (choose-buffer-session . "Choose session for this buffer: ")
         (enter-session-name-exists
          . "Session already exists, please enter a different session name: ")
-        (session-already-started . ,(concat "Shime session(s) already started. "
-                                            "Start a new session? "))
+        (session-already-started
+         . "Shime session(s) already started. Start a new session? ")
         (recieved-data-from-rogue-process
-         . (lambda (process) (concat "Recieved data from rogue process " process)))
+         . "Recieved data from rogue process %s")
         (recieved-data-from-unattached-process
-         . (lambda (process) (concat "Recieved data from unattached process " process)))
+         . "Recieved data from unattached process %s")
         (recieved-data-for-inactive-session
-         . (lambda (process session)
-             (concat "Recieved data from process " process
-                     " on inactive session " session)))))
+         .  "Recieved data from process %s on inactive session %s")))
 
 (defvar shime-languages
   "All the available languages. Re-evaluate this when
