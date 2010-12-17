@@ -976,7 +976,7 @@ If BUFFER is nil, use the current buffer."
       ;; Redisplay the prompt after cabal finishes.
       ;;
       ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
-      ;; doesn't seem to work at the moment.
+      ;; tracks the bash process not individual cabal processes.
       ((string-match (shime-string 'cabal-command-finished) line)
        (with-current-buffer (shime-buffer-buffer buffer)
          (let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
