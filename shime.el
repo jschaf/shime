@@ -283,7 +283,7 @@ unchanged."
                   :buffers '()
                   :active-p nil)))
     (if (assoc name shime-sessions)
-        (error (concat "Unable to make Shime session named " name ", already exists."))
+        (error "Unable to make Shime session named %s, already exists." name)
       (progn (add-to-list 'shime-sessions (cons name session))
              session))))
 
@@ -325,8 +325,8 @@ object and attach itself to it."
       ;; TODO: Look up to see if there is an existing Shime
       ;; session for that buffer, if not, offer to delete or
       ;; usurp the buffer.
-      (error (format "Unable to make Shime buffer named %s, already exists"
-                     name))
+      (error "Unable to make Shime buffer named %s, already exists"
+             name)
     (let ((buffer (make-shime-buffer
                    :name name
                    :buffer (get-buffer-create name)
@@ -1297,10 +1297,9 @@ from session."
   "Look-up a string with the current language."
   (if-let (entry (assoc n (assoc lang shime-languages)))
       (cdr entry)
-    (error (format
-            "Unable to retrieve language entry for %s from language set %s"
-            (symbol-name n)
-            lang))))
+    (error "Unable to retrieve language entry for %s from language set %s"
+           (symbol-name n)
+           lang)))
 
 ;; IO/paths/filesytem
 
