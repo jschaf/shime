@@ -338,11 +338,7 @@ object and attach itself to it."
                    :ghci-process nil)))
       (add-to-list 'shime-buffers (cons name buffer))
       (with-current-buffer (shime-buffer-buffer buffer)
-        (kill-all-local-variables)
-        (use-local-map shime-mode-map)
-        (setq major-mode 'shime-mode)
-        (setq mode-name "Shime")
-        (run-mode-hooks 'shime-mode-hook))
+        (shime-mode))
       buffer)))
 
 ;; Interactive procedures
