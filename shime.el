@@ -423,14 +423,22 @@ object and attach itself to it."
         (shime-cabal-command (read-from-minibuffer "Command: " command))
       (shime-cabal-command command))))
 
+(defun shime-format (key &rest args)
+  "Lookup Shime string KEY and format it with ARGS."
+  (apply 'format (shime-string key) args))
+
+(defun shime-message (key &rest args)
+  "Lookup the Shime string KEY and format it with ARGS."
+  (message (shime-format key args)))
+
 (defun shime-choose-buffer-session-or-default ()
   "Choose the session for this buffer or just default if there's only one session."
   (interactive)
   (shime-with-any-session
    (if (= (length shime-sessions) 1)
        (progn (setq shime-session-of-buffer (car (car shime-sessions)))
-              (message (funcall (shime-string 'buffer-session-was-set-default)
-                                shime-session-of-buffer))
+              (shime-message 'buffer-session-was-set-default
+                             shime-session-of-buffer)
               shime-session-of-buffer)
      (shime-choose-buffer-session))))
 
