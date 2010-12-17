@@ -1259,7 +1259,7 @@ acts as a state machine.  Output is handled by
     (mapc (lambda (proc) (shime-kill-process-by-name (shime-process-name proc)))
           (shime-session-processes session-struct))
     (setf (shime-session-active-p session-struct) nil)
-    (setq shime-sessions (shime-delete-assoc name shime-sessions))))
+    (setq shime-sessions (shime-assoc-delete name shime-sessions))))
 
 (defun shime-assoc-delete (key alist)
   "Delete from ALIST the first element whose car is `equal' to KEY.
@@ -1291,7 +1291,8 @@ from session."
   "Echo something into the buffer of a buffer object."
   (with-current-buffer (shime-buffer-buffer buffer)
     (goto-char (point-max))
-    (with-selected-window (display-buffer (shime-buffer-buffer buffer) nil 'visible)
+    (with-selected-window (display-buffer (shime-buffer-buffer buffer)
+                                          nil 'visible)
       (insert str)
       (goto-char (point-max)))))
 
