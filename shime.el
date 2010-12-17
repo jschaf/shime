@@ -449,7 +449,7 @@ object and attach itself to it."
    (setq shime-session-of-buffer
          (ido-completing-read (shime-string 'choose-buffer-session)
                               (mapcar 'car shime-sessions))))
-  (message (funcall (shime-string 'buffer-session-was-set) shime-session-of-buffer))
+  (shime-message 'buffer-session-was-set shime-session-of-buffer)
   shime-session-of-buffer)
 
 (defun shime-choose-buffer-ghci-process-or-default ()
@@ -460,9 +460,8 @@ object and attach itself to it."
         (progn (setq shime-ghci-process-of-buffer
                      (shime-process-name
                       (car (shime-session-ghci-processes session))))
-               (message (funcall (shime-string
-                                  'buffer-ghci-process-was-set-default)
-                                 shime-ghci-process-of-buffer))
+               (shime-message 'buffer-ghci-process-was-set-default
+                               shime-ghci-process-of-buffer)
                shime-ghci-process-of-buffer)
       (shime-choose-buffer-ghci-process))))
 
@@ -474,8 +473,7 @@ object and attach itself to it."
           (ido-completing-read (shime-string 'choose-buffer-ghci-process)
                                (mapcar 'shime-process-name
                                        (shime-session-ghci-processes session)))))
-  (message (funcall (shime-string 'buffer-ghci-process-was-set)
-                    shime-ghci-process-of-buffer))
+  (shime-message 'buffer-ghci-process-was-set shime-ghci-process-of-buffer)
   shime-ghci-process-of-buffer)
 
 (defun shime-choose-buffer-cabal-process-or-default ()
@@ -486,9 +484,8 @@ object and attach itself to it."
         (progn (setq shime-cabal-process-of-buffer
                      (shime-process-name
                       (car (shime-session-cabal-processes session))))
-               (message (funcall (shime-string
-                                  'buffer-cabal-process-was-set-default)
-                                 shime-cabal-process-of-buffer))
+               (shime-message 'buffer-cabal-process-was-set-default
+                              shime-cabal-process-of-buffer)
                shime-cabal-process-of-buffer)
       (shime-choose-buffer-cabal-process))))
 
@@ -500,8 +497,8 @@ object and attach itself to it."
           (ido-completing-read (shime-string 'choose-buffer-cabal-process)
                                (mapcar 'shime-process-name
                                        (shime-session-cabal-processes session)))))
-  (message (funcall (shime-string 'buffer-cabal-process-was-set)
-                    shime-cabal-process-of-buffer))
+  (shime-message 'buffer-cabal-process-was-set
+                 shime-cabal-process-of-buffer)
   shime-cabal-process-of-buffer)
 
 (defun shime-cabal-command (cmd)
@@ -682,15 +679,15 @@ evaluate THEN, else evaluate ELSE.
   `(if-let (process (assoc (process-name ,process) shime-processes))
        (if-let (session (shime-process-session (cdr process)))
            (if (not (shime-session-active-p session))
-               (message (funcall (shime-string 'recieved-data-for-inactive-session)
-                                 (process-name ,process) ""))
+               (shime-message 'recieved-data-for-inactive-session
+                              (process-name ,process) "")
              (let ((,session-name session)
                    (,process-name (cdr process)))
                ,@body))
-         (message (funcall (shime-string 'recieved-data-from-unattached-process)
-                           (process-name ,process))))
-     (message (funcall (shime-string 'recieved-data-from-rogue-process)
-                       (process-name ,process)))))
+         (shime-message 'recieved-data-from-unattached-process
+                        (process-name ,process)))
+     (shime-message 'recieved-data-from-rogue-process
+                    (process-name ,process))))
 
 (defmacro shime-with-any-session (&rest body)
   "The code this call needs a session. Ask to create one if needs be."
@@ -1243,12 +1240,10 @@ acts as a state machine.  Output is handled by
   "Handle the event of GHCi dying or just closing."
   ;; TODO: It's probably worth, later on, adding some hooks to
   ;; this, one might want to know when GHCi bails and act.
-  (when (y-or-n-p (funcall (shime-string 'ghci-died-restart?)
-                           (process-name process.)))
-    (shime-with-process-session
-     process. process session
-     (progn (message (shime-string 'restarting-ghci-process))
-            (shime-start-process-for-shime-process process)))))
+  (when (y-or-n-p (shime-format 'ghci-died-restart? (process-name process.)))
+    (shime-with-process-session process. process session
+      (shime-message 'restarting-ghci-process)
+      (shime-start-process-for-shime-process process))))
 
 (defun shime-kill-session-by-name (name)
   "Kill a Shime session and all associated buffers and processes."
@@ -1316,8 +1311,7 @@ from session."
   (if (executable-find name)
       name
     (shime-executable-find
-     (read-from-minibuffer (funcall (shime-string 'program-not-found)
-                                    name)
+     (read-from-minibuffer (shime-format 'program-not-found name)
                            name))))
 
 (defun shime-set-load-root (process root)
