@@ -68,7 +68,7 @@
 
 \\{shime-mode-map}"
   :group 'shime
-)
+  (setq next-error-function 'shime-next-error-function))
 
 (add-hook 'shime-mode-hook 'shime-set-cabal-commands)
 
