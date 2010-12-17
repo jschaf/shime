@@ -1172,7 +1172,8 @@ acts as a state machine.  Output is handled by
                      'read-only t
                      'rear-nonsticky t)))
        
-       ;; We hit a lone newline, so any block-data is complete.
+       ;; We hit a lone newline, so any error or warning block-data is
+       ;; complete.
        ((string-match "^\n$" line)
         (shime-echo-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))
