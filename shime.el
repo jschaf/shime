@@ -713,7 +713,7 @@ evaluate THEN, else evaluate ELSE.
 
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-ghci-process (name &rest body)
-  (declare (indent 0))
+  (declare (indent 1))
   (let ((sym (make-symbol "sym-sym")) (cons (make-symbol "cons-sym")))
     `(when-let (,sym (shime-get-buffer-ghci-process))
        (when-let (,cons (assoc ,sym shime-processes))
