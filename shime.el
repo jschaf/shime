@@ -363,7 +363,7 @@ object and attach itself to it."
   (let ((name (shime-prompt-for-session-name)))
     (shime-start-session
      :name name
-     :config (shime-make-config name nil))))
+     :config (shime-make-config name))))
 
 (defun shime-kill-session ()
   "Kill a Shime session and all associated processes and buffers."
