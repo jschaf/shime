@@ -762,16 +762,16 @@ evaluate THEN, else evaluate ELSE.
   (goto-char (point-max))
   (let* ((start (goto-char (line-beginning-position)))
          (end (line-end-position))
-         (found-prompt
+         (prompt-pos
           (search-forward-regexp shime-ghci-prompt-regex
                                  end
                                  t
                                  1)))
-    (when found-prompt
+    (when prompt-pos
       ;; TODO: I don't like this so much, not like a clear
       ;; spring in a Yorkshire morning, but it actually seems
       ;; sufficient.
-      (delete-region p end))))
+      (delete-region prompt-pos end))))
 
 (defun shime-get-shime-buffer-ghci-process (buffer)
   (if-let (process (shime-buffer-ghci-process buffer))
