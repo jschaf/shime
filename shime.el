@@ -646,9 +646,9 @@ evaluate THEN, else evaluate ELSE.
 (defmacro shime-with-process-buffered-lines (process input line-name &rest body)
   "Parse INPUT from PROCESS and run BODY on LINE-NAME."
   (declare (indent 3))
-  (let ((lines (gensym))
-        (parsed-lines (gensym))
-        (last-line (gensym)))
+  (let ((lines (make-symbol "lines-sym"))
+        (parsed-lines (make-symbol "parsed-lines-sym"))
+        (last-line (make-symbol "last-line-sym")))
     `(let* ((buffer (shime-process-buffer ,process))
             ;; Grab stored text and the new input.
             (full-lines (concat (shime-process-data ,process)
@@ -718,7 +718,7 @@ evaluate THEN, else evaluate ELSE.
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-ghci-process (name &rest body)
   (declare (indent 0))
-  (let ((sym (gensym)) (cons (gensym)))
+  (let ((sym (make-symbol "sym-sym")) (cons (make-symbol "cons-sym")))
     `(when-let (,sym (shime-get-buffer-ghci-process))
        (when-let (,cons (assoc ,sym shime-processes))
          (let ((,name (cdr ,cons)))
@@ -727,7 +727,7 @@ evaluate THEN, else evaluate ELSE.
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-cabal-process (name &rest body)
   (declare (indent 1))
-  (let ((sym (gensym)) (cons (gensym)))
+  (let ((sym (make-symbol "sym-sym")) (cons (make-symbol "cons-sym")))
     `(when-let (,sym (shime-get-buffer-cabal-process))
        (when-let (,cons (assoc ,sym shime-processes))
          (let ((,name (cdr ,cons)))
