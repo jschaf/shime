@@ -942,9 +942,8 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-detach-buffer-from-session (buffer session)
   "Bidirectionally detach a buffer from a session."
-  (mapcar (lambda (process)
-            (shime-detach-process-from-buffer process buffer))
-          (shime-buffer-processes buffer))
+  (mapc (lambda (process) (shime-detach-process-from-buffer process buffer))
+        (shime-buffer-processes buffer))
   (setf (shime-session-buffers session)
         (delete-if (lambda (buf)
                      (string= (shime-buffer-name buf)
