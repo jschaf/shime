@@ -1297,12 +1297,10 @@ from session."
   "Look-up a string with the current language."
   (if-let (entry (assoc n (assoc lang shime-languages)))
       (cdr entry)
-    (error (concat
-            "Unable to retrieve language entry for "
+    (error (format
+            "Unable to retrieve language entry for %s from language set %s"
             (symbol-name n)
-            " from language set "
-            lang
-            "."))))
+            lang))))
 
 ;; IO/paths/filesytem
 
