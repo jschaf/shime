@@ -64,8 +64,11 @@
   "Shime mode map.")
 
 (define-derived-mode shime-mode nil "Shime"
-  (make-local-variable 'shime-mode)
-  (setq shime-mode t))
+  "Superior Haskell Integration Mode for Emacs.
+
+\\{shime-mode-map}"
+  :group 'shime
+)
 
 (add-hook 'shime-mode-hook 'shime-set-cabal-commands)
 
