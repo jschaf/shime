@@ -757,18 +757,18 @@ evaluate THEN, else evaluate ELSE.
   ;; case a maurading fool enters and splashes water over
   ;; everyone's dogs.
   (goto-char (point-max))
-  (let ((start (line-beginning-position))
-        (end (line-end-position)))
-    (goto-char start)
-    (let* ((p (search-forward-regexp shime-ghci-prompt-regex
-                                     end
-                                     t
-                                     1)))
-      (when p
-        ;; TODO: I don't like this so much, not like a clear
-        ;; spring in a Yorkshire morning, but it actually seems
-        ;; sufficient.
-        (delete-region p end)))))
+  (let* ((start (goto-char (line-beginning-position)))
+         (end (line-end-position))
+         (found-prompt
+          (search-forward-regexp shime-ghci-prompt-regex
+                                 end
+                                 t
+                                 1)))
+    (when found-prompt
+      ;; TODO: I don't like this so much, not like a clear
+      ;; spring in a Yorkshire morning, but it actually seems
+      ;; sufficient.
+      (delete-region p end))))
 
 (defun shime-get-shime-buffer-ghci-process (buffer)
   (if-let (process (shime-buffer-ghci-process buffer))
