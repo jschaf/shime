@@ -1149,16 +1149,36 @@ This is the value of `next-error-function' in Shime buffers."
                       (copy-marker (line-beginning-position)))))
           (error
            ;; Goto prompt if we're going forward because that seems
-           ;; helpful.
+           ;; helpful, otherwise go to the start point because we
+           ;; don't want to move the point unnessecarily.
            (goto-char (if (> arg 0) (point-max) start-point))
            (error (cadr err))))))))
 
-(defun shime-propertize-error-string (str &optional face)
-  (setq face (or face 'shime-ghci-error))
-  (put-text-property 0 1 'shime-match t str)
-  (propertize (shime-collapse-error-string str)
-              'face face
-              'mouse-face 'highlight))
+(defun shime-propertize-error-string (str &optional warning-p)
+  (let* ((face (if warning-p 'shime-ghci-warning 'shime-ghci-error))
+         (regexp (if warning-p shime-warning-regexp shime-error-regexp))
+         (match-positions `((1 ,face)
+                            (2 compilation-line-number)
+                            (4 compilation-column-number))))
+    (message "Length: %d" (length str))
+
+    (string-match regexp str)
+    ;; Add the `next-error' identifier.
+    (put-text-property 0 1 'shime-message t str)
+    ;; Underline the error message location and add the highlight face
+    (add-text-properties (match-beginning 1) (match-end 4)
+                         '(face underline
+                           mouse-face highlight)
+                         str) 
+    ;; Add specific faces, (e.g. compilation-line-number)
+    (loop for (match-index match-face) in match-positions
+          do (put-text-property (match-beginning match-index)
+                                (match-end match-index)
+                                ;; Keep the underline to represent a
+                                ;; hyperlink
+                                'face (list 'underline match-face)
+                                str))
+    str))
 
 (defun shime-echo-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
