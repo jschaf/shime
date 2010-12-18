@@ -1164,8 +1164,9 @@ This is the value of `next-error-function' in Shime buffers."
 
     (string-match regexp str)
     ;; Add the `next-error' identifier.
-    (put-text-property 0 1 'shime-message t str)
-    ;; Underline the error message location and add the highlight face
+    (put-text-property 0 1 'shime-match t str)
+    ;; Underline the error message location and add the highlight
+    ;; face.
     (add-text-properties (match-beginning 1) (match-end 4)
                          '(face underline
                            mouse-face highlight)
