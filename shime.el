@@ -237,6 +237,20 @@ unchanged."
 (defvar shime-buffers '()
   "List of Shime buffers.")
 
+;; Buffer Local variables
+
+(defvar shime-session-of-buffer nil
+  "The Shime session associated with the current buffer.")
+(make-variable-buffer-local 'shime-session-of-buffer)
+
+(defvar shime-cabal-process-of-buffer nil
+  "The Shime cabal process associated with the current buffer.")
+(make-variable-buffer-local 'shime-cabal-process-of-buffer)
+
+(defvar shime-ghci-process-of-buffer nil
+  "A buffer local variable of the associated GHCi process.")
+(make-variable-buffer-local 'shime-ghci-process-of-buffer)
+
 ;; Data types
 
 (defstruct
@@ -818,10 +832,6 @@ evaluate THEN, else evaluate ELSE.
   (let ((buffer (shime-make-buffer session name)))
     (shime-attach-buffer-to-session session buffer)
     buffer))
-
-(defvar shime-ghci-process-of-buffer nil
-  "A buffer local variable of the associated GHCi process.")
-(make-variable-buffer-local 'shime-ghci-process-of-buffer)
 
 (defun shime-get-buffer-ghci-process (&optional buffer)
   "Get the GHCi process of BUFFER.
