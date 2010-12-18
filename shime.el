@@ -1172,18 +1172,14 @@ reset block-data and block-state."
        ('plain block-data)
 
        ('error
-        (shime-add-error-location buffer)
+        (shime-propertize-error-string block-data)
         (setq next-error-last-buffer (buffer-name shime-buffer))
-        (propertize (shime-collapse-error-string block-data)
-                    'face 'shime-ghci-error
-                    'mouse-face 'highlight))
+        (shime-propertize-error-string block-data))
        
        ('warning
-        (shime-add-error-location buffer)
+        (shime-propertize-error-string block-data)
         (setq next-error-last-buffer (buffer-name shime-buffer))
-        (propertize (shime-collapse-error-string block-data)
-                    'face 'shime-ghci-warning
-                    'mouse-face 'highlight))
+        (shime-propertize-error-string block-data 'shime-ghci-warning))
        
        ('package-load-contd
         (propertize
