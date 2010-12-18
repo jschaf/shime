@@ -1227,10 +1227,7 @@ acts as a state machine.  Output is handled by
 `shime-echo-block-data' which prints the
 `shime-process-block-data' correctly and sets the next state."
   (shime-with-process-buffered-lines process input line
-    (let* ((error-regexp "^\\(.+?:[0-9]+:[0-9]+: ?\\)")
-           (warning-regexp "^.+?:[0-9]+:[0-9]+: Warning")
-           (load-regexp "^Loading package")
-           (block-state (shime-process-block-state process))
+    (let* ((block-state (shime-process-block-state process))
            (block-data (shime-process-block-data process)))
       (cond
        ;; Prompt
