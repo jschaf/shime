@@ -1205,6 +1205,18 @@ reset block-data and block-state."
   (setf (shime-process-block-state process) next-state
         (shime-process-block-data process) ""))
 
+
+(defconst shime-error-regexp
+  "^\\(.+?\\):\\([0-9]+\\):\\(\\([0-9]+\\):\\)?\\( \\|\n *\\)"
+  "Regexp to match Haskell (GHCi) compilation errors.")
+
+(defconst shime-warning-regexp
+  "^\\(.+?\\):\\([0-9]+\\):\\(\\([0-9]+\\):\\)?\\( \\|\n *\\)\\(Warning\\)"
+  "Regexp to match Haskell (GHCi) compilation warnings.")
+
+(defconst shime-load-package-regexp "^Loading package"
+  "Regexp to match Haskell loading packages.")
+
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle and echo INPUT from PROCESS of SESSION.
 
@@ -1253,7 +1265,7 @@ acts as a state machine.  Output is handled by
 
        ;; A second package load
        ((eq block-state 'package-load-start)
-        (if (string-match load-regexp line)
+        (if (string-match shime-load-package-regexp line)
             (progn
               (shime-echo-block-data buffer process 'package-load-contd)
               (setf (shime-process-block-data process) line))
@@ -1261,24 +1273,24 @@ acts as a state machine.  Output is handled by
 
        ;; Multiple (>2) packages loads
        ((eq block-state 'package-load-contd)
-        (if (string-match load-regexp line)
+        (if (string-match shime-load-package-regexp line)
             (progn
               (shime-echo-block-data buffer process 'package-load-contd)
               (setf (shime-process-block-data process) line))
           (shime-echo-block-data buffer process 'plain)))
 
        ;; The start of a warning
-       ((string-match warning-regexp line)
+       ((string-match shime-warning-regexp line)
         (setf (shime-process-block-data process) line
               (shime-process-block-state process) 'warning))
 
        ;; The start of an error
-       ((string-match error-regexp line)
+       ((string-match shime-error-regexp line)
         (setf (shime-process-block-data process) line
               (shime-process-block-state process) 'error))
        
        ;; The start of a package load.
-       ((string-match load-regexp line)
+       ((string-match shime-load-package-regexp line)
         (setf (shime-process-block-data process) line
               (shime-process-block-state process) 'package-load-start))
 
