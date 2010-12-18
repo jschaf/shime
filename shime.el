@@ -1107,55 +1107,58 @@ Displays version numbers according to
         (match-string subexp string))
     string))
 
-(defvar shime-error-positions '()
-  "List of error positions in the Shime buffer.")
-
-(defvar shime-current-error-index -1
-  "Marker to the location from where the next error will be found.
-The global commands next/previous/first-error/goto-error use this.")
+(defun shime-find-match (n search message)
+  (if (not n) (setq n 1))
+  (let (r)
+    (while (> n 0)
+      (setq r (funcall search (point) 'shime-match))
+      (and r
+           (not (get-text-property r 'shime-match))
+           (setq r (funcall search r 'shime-match)))      
+      (if r
+          (goto-char r)
+        (error message))
+      (setq n (1- n)))))
 
 (defun shime-next-error-function (arg &optional reset)
   "Advance to the next error message and visit the file where the error was.
 This is the value of `next-error-function' in Shime buffers."
   (interactive "p")
-  (when reset
-    (setq shime-current-error-index 0))
   (shime-with-buffer-ghci-process process
     (let* ((buffer (shime-buffer-buffer (shime-process-buffer process)))
-           (len (length shime-error-positions))
-           (index (+ arg shime-current-error-index))
-           (pos (nth index shime-error-positions)))
+           (start-point (point))
+           (shime-match-p (get-text-property start-point 'shime-match)))
       (with-current-buffer buffer
-        ;; `with-selected-window' is needed to actually move the
-        ;; displayed point.  Apparently, there are two points for a
-        ;; buffer displayed in a window, the buffer's point and the
-        ;; window's point.  See a discussion of the issue at:
-        ;; http://www.mail-archive.com/emacs-devel@gnu.org/msg09292.html
-        (with-selected-window (display-buffer buffer nil 'visible)
-          (cond
-           ((zerop len)
-            (error "No errors to move too"))
-           ((>= index len)
-            (goto-char (car (last shime-error-positions)))
-            (setq shime-current-error-index (1- len))
-            (error "Moved past last error"))
-           ((< index 0)
-            (goto-char (car shime-error-positions))
-            (setq shime-current-error-index 0)
-            (error "Moved back before first error"))
-           (t
-            (goto-char pos)
-            (setq shime-current-error-index index)))))
-      (setq overlay-arrow-position (nth shime-current-error-index
-                                        shime-error-positions)))))
+        (goto-char (cond (reset (point-min))
+                         ((< arg 0) (line-beginning-position))
+                         ((> arg 0) (line-end-position))
+                         (start-point)))
+        
 
-(defun shime-add-error-location (buffer)
-  "Add the max point in BUFFER where we will insert an error.
-Use markers so the errors remain in the correct locations if the
-user makes any adjustments to the text."
-  (with-current-buffer (shime-buffer-buffer buffer)
-    (setq shime-error-positions (append shime-error-positions
-                                        (list (point-max-marker))))))
+        (condition-case err
+            (progn
+              (if (> 0 arg)
+                  (shime-find-match (abs arg) #'previous-single-property-change
+                                    "Moved back before first error")
+                (shime-find-match arg #'next-single-property-change
+                                  "Moved past last error, now at prompt"))
+          
+              (setq overlay-arrow-position
+                    (if (bolp)
+                        (point-marker)
+                      (copy-marker (line-beginning-position)))))
+          (error
+           ;; Goto prompt if we're going forward because that seems
+           ;; helpful.
+           (goto-char (if (> arg 0) (point-max) start-point))
+           (error (cadr err))))))))
+
+(defun shime-propertize-error-string (str &optional face)
+  (setq face (or face 'shime-ghci-error))
+  (put-text-property 0 1 'shime-match t str)
+  (propertize (shime-collapse-error-string str)
+              'face face
+              'mouse-face 'highlight))
 
 (defun shime-echo-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
