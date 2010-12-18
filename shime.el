@@ -1160,8 +1160,6 @@ This is the value of `next-error-function' in Shime buffers."
          (match-positions `((1 ,face)
                             (2 compilation-line-number)
                             (4 compilation-column-number))))
-    (message "Length: %d" (length str))
-
     (string-match regexp str)
     ;; Add the `next-error' identifier.
     (put-text-property 0 1 'shime-match t str)
