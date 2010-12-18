@@ -1155,6 +1155,10 @@ This is the value of `next-error-function' in Shime buffers."
            (error (cadr err))))))))
 
 (defun shime-propertize-error-string (str &optional warning-p)
+  "Add text properities to STR for highlighting and `next-error.'
+If WARNING-P is non-nil add properties to identify the string as
+a warning.  This function destructively updates STR with
+properties."
   (let* ((face (if warning-p 'shime-ghci-warning 'shime-ghci-error))
          (regexp (if warning-p shime-warning-regexp shime-error-regexp))
          (match-positions `((1 ,face)
