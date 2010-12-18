@@ -1199,7 +1199,7 @@ reset block-data and block-state."
        ('warning
         (shime-propertize-error-string block-data)
         (setq next-error-last-buffer (buffer-name shime-buffer))
-        (shime-propertize-error-string block-data 'shime-ghci-warning))
+        (shime-propertize-error-string block-data 'warning))
        
        ('package-load-contd
         (propertize
