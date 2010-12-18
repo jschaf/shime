@@ -1161,9 +1161,10 @@ a warning.  This function destructively updates STR with
 properties."
   (let* ((face (if warning-p 'shime-ghci-warning 'shime-ghci-error))
          (regexp (if warning-p shime-warning-regexp shime-error-regexp))
-         (match-positions `((1 ,face)
-                            (2 compilation-line-number)
-                            (4 compilation-column-number))))
+         file col line
+         (match-positions `((1 ,face file)
+                            (2 compilation-line-number line)
+                            (4 compilation-column-number col))))
     (string-match regexp str)
     ;; Add the `next-error' identifier.
     (put-text-property 0 1 'shime-match t str)
@@ -1174,13 +1175,23 @@ properties."
                            mouse-face highlight)
                          str) 
     ;; Add specific faces, (e.g. compilation-line-number)
-    (loop for (match-index match-face) in match-positions
+    (loop for (match-index match-face var) in match-positions
           do (put-text-property (match-beginning match-index)
                                 (match-end match-index)
                                 ;; Keep the underline to represent a
                                 ;; hyperlink
                                 'face (list 'underline match-face)
-                                str))
+                                str)
+             ;; Set file, col, and line variables, note `set', not
+             ;; `setq'
+             (set var (match-string match-index str)))
+    ;; Add shime-target property if not <interactive>.  Depends on
+    ;; `default-directory' being set correctly.
+    (unless  nil;(string= file "<interactive>")
+      (put-text-property (match-beginning 1) (match-end 4)
+                         'shime-target (expand-file-name
+                                        (substring-no-properties file))
+                         str))
     str))
 
 (defun shime-echo-block-data (buffer process next-state)
