@@ -1098,7 +1098,6 @@ If BUFFER is nil, use the current buffer."
 
 (defun shime-collapse-package-string (string)
   "Collapse a package STRING if `shime-collapse-packages' is non-nil.
-
 Displays version numbers according to
 `shime-show-package-versions'."
   (if shime-collapse-packages
