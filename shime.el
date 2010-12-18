@@ -1237,7 +1237,6 @@ reset block-data and block-state."
 
 (defun shime-ghci-filter-handle-input (session process input)
   "Handle and echo INPUT from PROCESS of SESSION.
-
 State is stored in `shime-process-block-state' and is an enum of
 objects, either `plain', `warning', `error',
 `package-load-start', or `package-load-contd'.  This function
