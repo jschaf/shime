@@ -584,27 +584,29 @@ object and attach itself to it."
 (defun shime-key-ret ()
   "Handle the return key press."
   (interactive)
-  (shime-with-buffer-ghci-process process
-    (let ((proc-buffer (shime-process-buffer process))
-          (prompt-p (save-excursion
-                      (goto-char (line-beginning-position))
-                      (looking-at shime-ghci-prompt-regex)))
-          (line (buffer-substring-no-properties
-                 (match-end 0)
-                 (line-end-position))))
-      (if prompt-p
-          (progn
-            (shime-history-ensure-created)
-            (unless (string= "" line)
-              (push line shime-history-of-buffer)
-              (setq shime-history-index-of-buffer -1))
-            (shime-buffer-ghci-send-expression proc-buffer process line))
-        ;; If we're not at a prompt, send an empty line to
-        ;; the REPL, this'll trigger it sending a new prompt,
-        ;; which is probably what we want. At least in the
-        ;; case of M-x erase buffer.
-        ;; TODO: take another look at this to re-evaluate.
-        (shime-buffer-ghci-send-expression proc-buffer process "")))))
+  (if (shime-at-error)
+      (shime-goto-error)
+    (shime-with-buffer-ghci-process process
+      (let ((proc-buffer (shime-process-buffer process))
+            (prompt-p (save-excursion
+                        (goto-char (line-beginning-position))
+                        (looking-at shime-ghci-prompt-regex)))
+            (line (buffer-substring-no-properties
+                   (match-end 0)
+                   (line-end-position))))
+        (if prompt-p
+            (progn
+              (shime-history-ensure-created)
+              (unless (string= "" line)
+                (push line shime-history-of-buffer)
+                (setq shime-history-index-of-buffer -1))
+              (shime-buffer-ghci-send-expression proc-buffer process line))
+          ;; If we're not at a prompt, send an empty line to
+          ;; the REPL, this'll trigger it sending a new prompt,
+          ;; which is probably what we want. At least in the
+          ;; case of M-x erase buffer.
+          ;; TODO: take another look at this to re-evaluate.
+          (shime-buffer-ghci-send-expression proc-buffer process ""))))))
 
 (defun shime-key-tab ()
   "Handle the tab key press."
