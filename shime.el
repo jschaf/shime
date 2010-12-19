@@ -1247,7 +1247,7 @@ a warning.  This function destructively updates STR with
 properties."
   (let* ((face (if warning-p 'shime-ghci-warning 'shime-ghci-error))
          (regexp (if warning-p shime-warning-regexp shime-error-regexp))
-         file col line
+         file col line target-file file-buffer
          (match-positions `((1 ,face file)
                             (2 compilation-line-number line)
                             (4 compilation-column-number col))))
@@ -1257,8 +1257,7 @@ properties."
     ;; Underline the error message location and add the highlight
     ;; face.
     (add-text-properties (match-beginning 1) (match-end 4)
-                         '(face underline
-                           mouse-face highlight)
+                         '(face underline mouse-face highlight)
                          str) 
     ;; Add specific faces, (e.g. compilation-line-number)
     (loop for (match-index match-face var) in match-positions
@@ -1268,16 +1267,41 @@ properties."
                                 ;; hyperlink
                                 'face (list 'underline match-face)
                                 str)
-             ;; Set file, col, and line variables, note `set', not
-             ;; `setq'
-             (set var (match-string match-index str)))
+          ;; Set file, col, and line variables, note `set', not
+          ;; `setq'
+          (set var (substring-no-properties
+                    (match-string match-index str))))
+    ;; Add shime-type
+    (put-text-property
+     (match-beginning 1) (match-end 4)
+     'shime-type (cond
+                  ((string-match "<interactive>" str) 'shime-interactive-error)
+                  (warning-p 'shime-warning)
+                  (t 'shime-error))
+     str)
+    
     ;; Add shime-target property if not <interactive>.  Depends on
     ;; `default-directory' being set correctly.
-    (unless  nil;(string= file "<interactive>")
+    (unless (string= file "<interactive>")
+      (setq file (expand-file-name file))
+      (setq file-buffer (find-buffer-visiting file))
+      (setq line (string-to-number line)
+            col (string-to-number col))
+
+      ;; Store the raw location data in case a marker gets deleted.
       (put-text-property (match-beginning 1) (match-end 4)
-                         'shime-target (expand-file-name
-                                        (substring-no-properties file))
-                         str))
+                         'shime-raw-target (list file line col)
+                         str)
+
+      ;; Store the marker if there is an open buffer
+      (when file-buffer
+        (put-text-property (match-beginning 1) (match-end 4)
+                           'shime-target
+                           (set-marker (make-marker)
+                                       (shime-goto-line-col file-buffer
+                                                            line col)
+                                       file-buffer)
+                           str)))
     str))
 
 (defun shime-echo-block-data (buffer process next-state)
