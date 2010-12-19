@@ -539,26 +539,30 @@ object and attach itself to it."
   current session GHCi process."
   (interactive)
   (shime-with-buffer-ghci-process process
-   (let* ((file (buffer-file-name))
-          (file-dir (file-name-directory file))
-          (proc-buffer (shime-process-buffer process)))
-     (when (buffer-modified-p) (save-buffer))
-     (if (shime-process-pwd process)
-         (progn
-           (unless (shime-relative-to (shime-process-pwd process) file-dir)
-             (when (shime-ask-change-root)
-               (shime-prompt-load-root process file-dir)))
-           (let ((file-load-display
-                  (if (shime-relative-to (shime-process-pwd process) file-dir)
-                      (if shime-display-dir-on-load
-                          file
-                          (shime-path-filename file))
-                    file)))
-            (shime-echo-command proc-buffer
-                                (format "load %s\n" file-load-display)))
-           (shime-ghci-send-expression process (concat ":load " file)))
-       (shime-set-load-root process file-dir)
-       (shime-load-file)))))
+    (let* ((file (buffer-file-name))
+           (file-dir (file-name-directory file))
+           (proc-buffer (shime-process-buffer process)))
+      (when (buffer-modified-p) (save-buffer))
+      (if (shime-process-pwd process)
+          (progn
+            (unless (shime-relative-to (shime-process-pwd process) file-dir)
+              (when (shime-ask-change-root)
+                (shime-prompt-load-root process file-dir)))
+            (let ((file-load-display
+                   (if (shime-relative-to (shime-process-pwd process) file-dir)
+                       (if shime-display-dir-on-load
+                           file
+                         (shime-path-filename file))
+                     file)))
+
+              (with-current-buffer (shime-buffer-buffer proc-buffer)
+                (goto-char (point-max)))
+
+              (shime-echo-command proc-buffer
+                                  (format "load %s\n" file-load-display)))
+            (shime-ghci-send-expression process (concat ":load " file)))
+        (shime-set-load-root process file-dir)
+        (shime-load-file)))))
 
 (defun shime-reset-everything-because-it-broke ()
   "Reset everything because it broke."
