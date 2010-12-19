@@ -1158,7 +1158,87 @@ This is the value of `next-error-function' in Shime buffers."
            ;; helpful, otherwise go to the start point because we
            ;; don't want to move the point unnessecarily.
            (goto-char (if (> arg 0) (point-max) start-point))
-           (error (cadr err))))))))
+           (error (cadr err))))
+        (shime-goto-error)))))
+
+(defun shime-at-error ()
+  "Return non-nil if the point is at an error."
+  (let ((prop (get-text-property (point) 'shime-type)))
+    (memq prop '(shime-warning shime-error shime-interactive-error))))
+
+(defun shime-find-occurrence ()
+  "Get the source data or marker for the error at point."
+  (let* ((type (get-text-property (point) 'shime-type))
+         (marker (get-text-property (point) 'shime-target))
+         (raw (get-text-property (point) 'shime-raw-target))
+         pos)
+    (if (shime-at-error)
+        (setq pos (cond 
+                   ((eq type 'shime-interactive-error)
+                    'shime-interactive-error)
+                   ((and marker (marker-buffer marker)) marker)
+                   (t raw)))
+      (error "No error on this line"))
+    pos))
+
+(defun shime-goto-error (&optional event)
+  "Visit the source for the error message at point."
+  (interactive (list last-input-event))
+  (let ((pos
+         (if (null event)
+             (shime-find-occurrence)
+           (with-current-buffer (window-buffer (posn-window (event-end event)))
+             (save-excursion
+               (goto-char (posn1-point (event-end event)))
+               (shime-find-occurrence))))))
+    (cond
+     ;; What can we do for interpreter errors?
+     ((eq pos 'interactive-error) nil)
+     ;; A marker, sweet.  TODO: check if it's correct.
+     ((markerp pos)
+      (pop-to-buffer (marker-buffer pos))
+      (goto-char pos))
+     ;; We have the raw target so find and show the source file then
+     ;; update the marker target.
+     ((listp pos)
+      (let (file line col raw-buffer error-start-pos error-end-pos)
+        (setq file (nth 0 pos)
+              line (nth 1 pos)
+              col (nth 2 pos)
+              raw-buffer (compilation-find-file (point-marker) file nil))
+        (unless (shime-at-error)
+          (error "Not at error location"))
+        (when (null raw-buffer)
+          (error "Can't find buffer for %s:%d:%d" file line col))
+        (setq error-start-pos
+              ;; Might be at the beginning of the first error so use
+              ;; current point if we don't find anything.  We know
+              ;; we're at an error so this is valid.
+              (or (previous-single-property-change (point) 'shime-type)
+                  (point)))
+        (setq error-end-pos
+              ;; Might be at the end of the last error.
+              (or (next-single-property-change (point) 'shime-type)
+                  (point)))
+        (put-text-property error-start-pos
+                           error-end-pos
+                           'shime-target
+                           (set-marker (make-marker)
+                                       (shime-goto-line-col raw-buffer
+                                                            line
+                                                            col)
+                                       raw-buffer))
+        ;; TODO: prevent infinite recursion
+        (shime-goto-error))))))
+
+(defun shime-goto-line-col (buffer line col)
+  "Translate LINE and COL in BUFFER to a point."
+  (with-current-buffer buffer
+    (save-excursion
+      (goto-char (point-min))
+      (forward-line (1- line))
+      (forward-char col)
+      (point))))
 
 (defun shime-propertize-error-string (str &optional warning-p)
   "Add text properities to STR for highlighting and `next-error.'
