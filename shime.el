@@ -1139,8 +1139,6 @@ This is the value of `next-error-function' in Shime buffers."
                          ((< arg 0) (line-beginning-position))
                          ((> arg 0) (line-end-position))
                          (start-point)))
-        
-
         (condition-case err
             (progn
               (if (> 0 arg)
