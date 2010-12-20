@@ -127,6 +127,16 @@ packages (e.g. array-0.3.0.1)."
   :group 'shime
   :type 'boolean)
 
+(defcustom shime-jump-to-first-error t
+  "Jump to the first error in a Shime buffer."
+  :group 'shime
+  :type 'boolean)
+
+(defcustom shime-prompt-hook nil
+  "Hook to run at each prompt in the Shime buffer."
+  :group 'shime
+  :type 'hook)
+(add-hook 'shime-prompt-hook 'shime-maybe-goto-error)
 ;; Constants
 
 (defvar shime-strings-en "English language strings.")
@@ -530,6 +540,9 @@ object and attach itself to it."
 (defun shime-echo-command (buffer str)
   "Insert STR into BUFFER with the shime-interactive-command face."
   (with-current-buffer (shime-buffer-buffer buffer)
+    ;; Don't overwrite the prompt because it delimits error messages.
+    ;; We use it for jump to first error.
+    (insert "\n")
     (shime-delete-line)
     (shime-buffer-echo buffer
                        (propertize str 'face 'shime-interactive-command))))
@@ -1492,7 +1505,9 @@ acts as a state machine.  Output is handled by
          (propertize line
                      'face 'shime-ghci-prompt
                      'read-only t
-                     'rear-nonsticky t)))
+                     'rear-nonsticky t
+                     'prompt t))
+        (run-hooks 'shime-prompt-hook))
        
        ;; We hit a lone newline, so any error or warning block-data is
        ;; complete.
@@ -1545,6 +1560,31 @@ acts as a state machine.  Output is handled by
         ;; current line.
         (shime-echo-ghci-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))))))
+
+(defun shime-maybe-goto-error ()
+  "If `shime-jump-to-first-error' goto first error after last
+prompt."
+  (let ((start (point))
+        last-prompt-pos
+        error-pos
+        interactive-error-p)
+    (when shime-jump-to-first-error
+      (setq last-prompt-pos
+            (or (previous-single-property-change
+                 (line-beginning-position)
+                 'prompt)
+                (point-min)))
+      (setq error-pos (next-single-property-change last-prompt-pos
+                                                   'shime-match))
+      (setq interactive-error-p
+            (and error-pos
+                 (eq 'shime-interactive-error
+                     (get-text-property error-pos 'shime-type))))
+      (unless interactive-error-p
+        (goto-char last-prompt-pos)
+        (condition-case err
+            (shime-next-error-function 1)
+          (error nil))))))
 
 (defun shime-delete-line ()
   "Delete the current line."
