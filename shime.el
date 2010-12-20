@@ -1302,7 +1302,7 @@ properties."
                            str)))
     str))
 
-(defun shime-echo-block-data (buffer process next-state)
+(defun shime-echo-ghci-block-data (buffer process next-state)
   "Echo the PROCESS block-data using appropriate properties and
 reset block-data and block-state."
   (let ((block-data (shime-process-block-data process))
@@ -1363,7 +1363,7 @@ State is stored in `shime-process-block-state' and is an enum of
 objects, either `plain', `warning', `error',
 `package-load-start', or `package-load-contd'.  This function
 acts as a state machine.  Output is handled by
-`shime-echo-block-data' which prints the
+`shime-echo-ghci-block-data' which prints the
 `shime-process-block-data' correctly and sets the next state."
   (shime-with-process-buffered-lines process input line
     (let* ((block-state (shime-process-block-state process))
@@ -1373,7 +1373,7 @@ acts as a state machine.  Output is handled by
        ((string-match shime-ghci-prompt-regex line)
         ;; Echo remaining block-data because a prompt means the
         ;; previous action finished.
-        (shime-echo-block-data buffer process 'plain)
+        (shime-echo-ghci-block-data buffer process 'plain)
         ;; Colorize the prompt with `shime-ghci-prompt' and set
         ;; it to read-only to prevent accidental deletion.  Set
         ;; `rear-nonsticky' so the properties don't bleed onto
@@ -1388,7 +1388,7 @@ acts as a state machine.  Output is handled by
        ;; We hit a lone newline, so any error or warning block-data is
        ;; complete.
        ((string-match "^\n$" line)
-        (shime-echo-block-data buffer process 'plain)
+        (shime-echo-ghci-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))
 
        ;; Additional warning data
@@ -1403,17 +1403,17 @@ acts as a state machine.  Output is handled by
        ((eq block-state 'package-load-start)
         (if (string-match shime-load-package-regexp line)
             (progn
-              (shime-echo-block-data buffer process 'package-load-contd)
+              (shime-echo-ghci-block-data buffer process 'package-load-contd)
               (setf (shime-process-block-data process) line))
-          (shime-echo-block-data buffer process 'plain)))
+          (shime-echo-ghci-block-data buffer process 'plain)))
 
        ;; Multiple (>2) packages loads
        ((eq block-state 'package-load-contd)
         (if (string-match shime-load-package-regexp line)
             (progn
-              (shime-echo-block-data buffer process 'package-load-contd)
+              (shime-echo-ghci-block-data buffer process 'package-load-contd)
               (setf (shime-process-block-data process) line))
-          (shime-echo-block-data buffer process 'plain)))
+          (shime-echo-ghci-block-data buffer process 'plain)))
 
        ;; The start of a warning
        ((string-match shime-warning-regexp line)
@@ -1434,7 +1434,7 @@ acts as a state machine.  Output is handled by
        (t
         ;; Finish displaying any block-data since it came before the
         ;; current line.
-        (shime-echo-block-data buffer process 'plain)
+        (shime-echo-ghci-block-data buffer process 'plain)
         (shime-buffer-echo buffer line))))))
 
 (defun shime-delete-line ()
