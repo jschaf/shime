@@ -1317,6 +1317,7 @@ This is the value of `next-error-function' in Shime buffers."
      ((eq pos 'interactive-error) nil)
      ;; A marker, sweet.  TODO: check if it's correct.
      ((markerp pos)
+      (goto-char (point))
       (pop-to-buffer (marker-buffer pos))
       (goto-char pos))
      ;; We have the raw target so find and show the source file then
