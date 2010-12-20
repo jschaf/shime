@@ -717,7 +717,7 @@ evaluate THEN, else evaluate ELSE.
        (if (y-or-n-p (shime-string 'start-shime))
            (progn (shime)
                   ,@body)
-         (message (shime-string 'needed-a-session)))
+         (shime-message 'needed-a-session))
      ,@body))
 
 (defmacro shime-with-session (name &rest body)
@@ -731,7 +731,7 @@ evaluate THEN, else evaluate ELSE.
         (if ,name
             (let ((,name (cdr ,name)))
               ,@body)
-          (message (shime-string 'needed-a-session)))))))
+          (shime-message 'needed-a-session))))))
 
 ;; TODO: Maybe a bit more interactivity.
 (defmacro shime-with-buffer-ghci-process (name &rest body)
@@ -795,7 +795,7 @@ evaluate THEN, else evaluate ELSE.
   (if-let (process (shime-buffer-ghci-process buffer))
       process
     (if (null (shime-buffer-processes buffer))
-        (prog1 nil (message (shime-string 'buffer-no-processes)))
+        (prog1 nil (shime-message 'buffer-no-processes))
       (let ((ghci-processes (remove-if-not
                               (lambda (p) (eq (shime-process-type p) 'ghci))
                               (shime-buffer-processes buffer))))
