@@ -983,22 +983,133 @@ If BUFFER is nil, use the current buffer."
    'cabal
    nil))
 
+(defconst shime-cabal-warning-regexp "\\(^Warning\\):")
+
+(defconst shime-cabal-missing-dependencies-regexp
+  "^\\(cabal\\): At least the following dependencies are missing:")
+
+(defconst shime-cabal-dependency-regexp
+  "^\\([^ \r\n]+\\) \\([^,]+\\)\\(,\\)?$")
+
 (defun shime-cabal-filter-handle-input (session process input)
   "Handle input from the process on a given session and process."
   (shime-with-process-buffered-lines process input line
+    (let* ((block-state (shime-process-block-state process))
+           (block-data (shime-process-block-data process)))
+      (cond
+       ;; A cabal command finished
+       ((string-match (shime-string 'cabal-command-finished) line)
+        (shime-echo-cabal-block-data buffer process 'plain)
+        ;; Redisplay the prompt after cabal finishes.
+        ;;
+        ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
+        ;; tracks the bash process not individual cabal processes.
+        
+        (with-current-buffer (shime-buffer-buffer buffer)
+          (let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
+            (shime-ghci-send-expression ghci-proc ""))
+          ""))
+
+       ;; Additional missing dependencies
+       ((eq block-state 'missing-dependency-contd)
+        (string-match shime-cabal-dependency-regexp line)
+        (setf (shime-process-block-data process) line)
+        (shime-echo-cabal-block-data
+         buffer
+         process
+         ;; Was there a match and a comma at the end.
+         (if (and (match-string 0 line) (match-string 3 line))
+             'missing-dependency-contd
+           'plain)))
+
+       ;; Additional warning data
+       ((eq block-state 'warning)
+        (setf (shime-process-block-data process) (concat block-data line)))
+
+       ;; Additional error data
+       ((eq block-state 'error)
+        (setf (shime-process-block-data process) (concat block-data line)))
+
+       ;; Start of missing dependencies.
+       ((string-match shime-cabal-missing-dependencies-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-state process) 'missing-dependency-start)
+        ;; Might as well echo it now.
+        (shime-echo-cabal-block-data buffer process 'missing-dependency-contd))
+
+       ;; The start of a GHC warning.
+       ((string-match shime-warning-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-state process) 'warning))
+
+       ;; The start of a GHC error.
+       ((string-match shime-error-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-state process) 'error))
+
+       ;; A Cabal warning.
+       ((string-match shime-cabal-warning-regexp line)
+        (setf (shime-process-block-data process) line
+              (shime-process-block-state process) 'cabal-warning)
+        (shime-echo-cabal-block-data buffer process 'plain))
+
+       ;; Everything else.
+       (t
+        ;; Finish displaying any block-data since it came before the
+        ;; current line.
+        (shime-echo-cabal-block-data buffer process 'plain)
+        (shime-buffer-echo buffer
+                           ;; TODO: why does this need to be
+                           ;; concat'd?
+                           (concat line)))))))
+
+(defun shime-echo-cabal-block-data (buffer process next-state)
+  "Echo the PROCESS block-data using appropriate properties and
+reset block-data and block-state."
+  (let ((block-data (shime-process-block-data process))
+        (block-state (shime-process-block-state process))
+        (shime-buffer (shime-buffer-buffer buffer)))
     (shime-buffer-echo
      buffer
-     (cond
-      ;; Redisplay the prompt after cabal finishes.
-      ;;
-      ;; TODO: Put this in the sentinel.  The shime-cabal-sentinel
-      ;; tracks the bash process not individual cabal processes.
-      ((string-match (shime-string 'cabal-command-finished) line)
-       (with-current-buffer (shime-buffer-buffer buffer)
-         (let ((ghci-proc (shime-get-shime-buffer-ghci-process buffer)))
-           (shime-ghci-send-expression ghci-proc ""))
-         ""))
-      (t (concat line "\n"))))))
+     (case block-state
+       ('plain block-data)
+
+       ;; Just font-lock, don't add any error specific properties
+       ;; because we wouldn't know where to jump too.
+       ('cabal-warning
+        (string-match shime-cabal-warning-regexp block-data)
+        (put-text-property (match-beginning 1) (match-end 1)
+                           'face 'shime-ghci-warning
+                           block-data)
+        block-data)
+
+       ('missing-dependency-contd
+        (when (eq next-state 'missing-dependency-contd)
+          (setq block-data (concat (substring block-data 0 -1) " ")))
+        (put-text-property 0 (length block-data)
+                           'face 'font-lock-comment-face
+                           block-data)
+        block-data)
+       
+       ('missing-dependency-start
+        (string-match shime-cabal-missing-dependencies-regexp block-data)
+        (put-text-property (match-beginning 1) (match-end 1)
+                           'face 'shime-ghci-warning
+                           block-data)
+        block-data)
+
+       ('error
+        (setq next-error-last-buffer (buffer-name shime-buffer))
+        (shime-propertize-error-string block-data))
+       
+       ('warning
+        (setq next-error-last-buffer (buffer-name shime-buffer))
+        (shime-propertize-error-string block-data 'warning))
+
+       (otherwise block-data))))
+  
+  (setf (shime-process-block-state process) next-state
+        (shime-process-block-data process) ""))
 
 (defun shime-cabal-filter (process. input)
   "The process filter for Cabal processes."
