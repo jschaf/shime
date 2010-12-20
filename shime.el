@@ -1314,12 +1314,10 @@ reset block-data and block-state."
        ('plain block-data)
 
        ('error
-        (shime-propertize-error-string block-data)
         (setq next-error-last-buffer (buffer-name shime-buffer))
         (shime-propertize-error-string block-data))
        
        ('warning
-        (shime-propertize-error-string block-data)
         (setq next-error-last-buffer (buffer-name shime-buffer))
         (shime-propertize-error-string block-data 'warning))
        
