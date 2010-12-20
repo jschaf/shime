@@ -1269,18 +1269,17 @@ This is the value of `next-error-function' in Shime buffers."
                   (shime-find-match (abs arg) #'previous-single-property-change
                                     "Moved back before first error")
                 (shime-find-match arg #'next-single-property-change
-                                  "Moved past last error, now at prompt"))
-          
-              (setq overlay-arrow-position
-                    (if (bolp)
-                        (point-marker)
-                      (copy-marker (line-beginning-position)))))
+                                  "Moved past last error, now at prompt")))
           (error
            ;; Goto prompt if we're going forward because that seems
            ;; helpful, otherwise go to the start point because we
            ;; don't want to move the point unnessecarily.
            (goto-char (if (> arg 0) (point-max) start-point))
            (error (cadr err))))
+        (setq overlay-arrow-position
+              (if (bolp)
+                  (point-marker)
+                (copy-marker (line-beginning-position))))
         (shime-goto-error)))))
 
 (defun shime-at-error ()
